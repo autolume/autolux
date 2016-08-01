@@ -6,12 +6,12 @@ import os
 import shlex, subprocess
 
 # BRIGHTNESS LEVELS (should be between 1 and 100)
-MIN=5
-MAX=20
+MIN_LEVEL=5
+MAX_LEVEL=20
 
 # interpolate over our threshold (should be between 1 and 65K)
 MAX_BRIGHT=50000
-LOW_BRIGHT=5000
+MIN_BRIGHT=5000
 
 # interval between screenshots
 SLEEP_TIME=3
@@ -23,6 +23,33 @@ FOCUSED_CMD='xdotool getwindowfocus getwindowpid'
 # use getwindowname if you dare
 # FOCUSED_CMD='xdotool getwindowfocus getwindowname'
 
+
+
+def load_options():
+  global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, SLEEP_TIME
+
+  from optparse import OptionParser
+  parser = OptionParser()
+  parser.add_option("--min-level", dest="min_level", type="int", default=MIN_LEVEL)
+  parser.add_option("--max-level", dest="max_level", type="int", default=MAX_LEVEL)
+  parser.add_option("--interval", dest="interval", type="int", default=SLEEP_TIME)
+  parser.add_option("--min-bright", dest="min_bright", type="int", default=MIN_BRIGHT)
+  parser.add_option("--max-bright", dest="max_bright", type="int", default=MAX_BRIGHT)
+
+
+  options, args = parser.parse_args()
+  MIN_LEVEL = options.min_level
+  MAX_LEVEL = options.max_level
+  SLEEP_TIME = options.interval
+  MAX_LEVEL = options.max_level
+
+
+
+def print_config():
+  print "SLEEP TIME:", SLEEP_TIME
+  print "DISPLAY RANGE:", MIN_LEVEL, MAX_LEVEL
+  print "BRIGHTNESS RANGE:", MIN_BRIGHT, MAX_BRIGHT
+
 def run_cmd(cmd):
   args = shlex.split(cmd)
   return subprocess.check_output(args)
@@ -30,7 +57,7 @@ def run_cmd(cmd):
 def monitor_luma():
   prev_brightness = None
   prev_window = None
-  cur_range = MAX_BRIGHT - LOW_BRIGHT
+  cur_range = MAX_BRIGHT - MIN_BRIGHT
 
   while True:
     time.sleep(SLEEP_TIME)
@@ -55,17 +82,19 @@ def monitor_luma():
       continue
 
 
-    trimmed_mean = max(min(MAX_BRIGHT, cur_mean), LOW_BRIGHT) - LOW_BRIGHT
+    trimmed_mean = max(min(MAX_BRIGHT, cur_mean), MIN_BRIGHT) - MIN_BRIGHT
     trimmed_mean = int(trimmed_mean / 500) * 500
     range_is = float(trimmed_mean) / float(cur_range)
 
     new_gamma = 1 - range_is
-    new_brightness =  (MAX - MIN) * new_gamma + MIN
+    new_level =  (MAX_LEVEL - MIN_LEVEL) * new_gamma + MIN_LEVEL
 
-    if prev_brightness != new_brightness:
-      print "GAMMA: %.02f" % new_gamma, "AVG LUMA: %05i" % trimmed_mean, "NEW BRIGHTNESS:", int(new_brightness)
-      run_cmd("xbacklight -set %s" % new_brightness)
-    prev_brightness = new_brightness
+    if prev_brightness != new_level:
+      print "AVG LUMA: %05i," % trimmed_mean, "NEW GAMMA: %.02f," % new_gamma, "NEW BRIGHTNESS:", "%s/%s" % (int(new_level), MAX_LEVEL)
+      run_cmd("xbacklight -set %s" % new_level)
+    prev_brightness = new_level
 
 if __name__ == "__main__":
+  load_options()
+  print_config()
   monitor_luma()
