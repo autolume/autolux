@@ -14,7 +14,7 @@ MAX_BRIGHT=50000
 MIN_BRIGHT=5000
 
 # interval between screenshots
-SLEEP_TIME=3
+SLEEP_TIME=3000
 
 TRANSITION_MS=400
 
@@ -51,7 +51,7 @@ def load_options():
 
 def print_config():
   print "FADE TIME:", TRANSITION_MS
-  print "SLEEP TIME:", SLEEP_TIME * 1000
+  print "SLEEP TIME:", SLEEP_TIME
   print "DISPLAY RANGE:", MIN_LEVEL, MAX_LEVEL
   print "BRIGHTNESS RANGE:", MIN_BRIGHT, MAX_BRIGHT
 
@@ -65,7 +65,7 @@ def monitor_luma():
   cur_range = MAX_BRIGHT - MIN_BRIGHT
 
   while True:
-    time.sleep(SLEEP_TIME)
+    time.sleep(SLEEP_TIME / 1000.0)
 
     try:
         window = run_cmd(FOCUSED_CMD)

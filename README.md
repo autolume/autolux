@@ -13,4 +13,7 @@ on screen's contents.
 
 ## usage:
 
-python autolux.py
+    autolux --help
+
+    # check screen every 5 seconds, takes 500ms to fade brightness to next state
+    autolux --interval 5000 --fade-time 500
