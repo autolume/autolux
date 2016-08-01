@@ -23,7 +23,7 @@ TRANSITION_MS=400
 # 100 width, 200 height, 300 offset from left, 400 offset from top
 CROP_SCREEN="10x100%+400+0"
 
-SCREENSHOT_CMD='import -screen -w root -quality 20'
+SCREENSHOT_CMD='import -colorspace gray -screen -w root -quality 20'
 VERBOSE=False
 def load_options():
   global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, SLEEP_TIME, TRANSITION_MS, CROP_SCREEN
