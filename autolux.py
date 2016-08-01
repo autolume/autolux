@@ -16,6 +16,8 @@ MIN_BRIGHT=5000
 # interval between screenshots
 SLEEP_TIME=3
 
+TRANSITION_MS=400
+
 SCREENSHOT_CMD='import -screen -w root -colorspace gray ss.png'
 BRIGHTNESS_CMD='convert ss.png -format "%[mean]" info:'
 
@@ -26,7 +28,7 @@ FOCUSED_CMD='xdotool getwindowfocus getwindowpid'
 
 
 def load_options():
-  global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, SLEEP_TIME
+  global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, SLEEP_TIME, TRANSITION_MS
 
   from optparse import OptionParser
   parser = OptionParser()
@@ -35,6 +37,7 @@ def load_options():
   parser.add_option("--interval", dest="interval", type="int", default=SLEEP_TIME)
   parser.add_option("--min-bright", dest="min_bright", type="int", default=MIN_BRIGHT)
   parser.add_option("--max-bright", dest="max_bright", type="int", default=MAX_BRIGHT)
+  parser.add_option("--fade-time", dest="fade_time", type="int", default=TRANSITION_MS)
 
 
   options, args = parser.parse_args()
@@ -42,11 +45,13 @@ def load_options():
   MAX_LEVEL = options.max_level
   SLEEP_TIME = options.interval
   MAX_LEVEL = options.max_level
+  TRANSITION_MS = options.fade_time
 
 
 
 def print_config():
-  print "SLEEP TIME:", SLEEP_TIME
+  print "FADE TIME:", TRANSITION_MS
+  print "SLEEP TIME:", SLEEP_TIME * 1000
   print "DISPLAY RANGE:", MIN_LEVEL, MAX_LEVEL
   print "BRIGHTNESS RANGE:", MIN_BRIGHT, MAX_BRIGHT
 
@@ -91,7 +96,7 @@ def monitor_luma():
 
     if prev_brightness != new_level:
       print "AVG LUMA: %05i," % trimmed_mean, "NEW GAMMA: %.02f," % new_gamma, "NEW BRIGHTNESS:", "%s/%s" % (int(new_level), MAX_LEVEL)
-      run_cmd("xbacklight -set %s" % new_level)
+      run_cmd("xbacklight -set %s -time %s" % (new_level, TRANSITION_MS))
     prev_brightness = new_level
 
 if __name__ == "__main__":
