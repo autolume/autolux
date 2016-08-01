@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='autolux',
-    version='0.0.3',
+    version='0.0.4',
     author='okay',
     author_email='okay.zed+kk@gmail.com',
     packages=['autolux' ],
@@ -10,6 +10,6 @@ setup(
     url='http://github.com/okayzed/autolux',
     license='MIT',
     description='an auto luxer',
-    long_description=open('README').read(),
+    long_description=open('README.rst').read(),
     )
 
