@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='autolux',
-    version='0.0.4',
+    version='0.0.5',
     author='okay',
     author_email='okay.zed+kk@gmail.com',
     packages=['autolux' ],
