@@ -99,7 +99,10 @@ def monitor_luma():
       run_cmd("xbacklight -set %s -time %s" % (new_level, TRANSITION_MS))
     prev_brightness = new_level
 
-if __name__ == "__main__":
+def run():
   load_options()
   print_config()
   monitor_luma()
+
+if __name__ == "__main__":
+  run()

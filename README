@@ -5,6 +5,10 @@ inspired by [lumen](https://github.com/anishathalye/lumen) but written for
 'average value' of the resulting image and changes the screen brightness based
 on screen's contents.
 
+## installation
+
+  pip install autolux
+
 ## dependencies
 
 * imagemagick (for screenshots + determining average brightness)
@@ -13,7 +17,4 @@ on screen's contents.
 
 ## usage:
 
-    autolux --help
-
-    # check screen every 5 seconds, takes 500ms to fade brightness to next state
-    autolux --interval 5000 --fade-time 500
+    autolux
