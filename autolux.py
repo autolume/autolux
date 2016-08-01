@@ -35,7 +35,10 @@ def monitor_luma():
   while True:
     time.sleep(SLEEP_TIME)
 
-    window = run_cmd(FOCUSED_CMD)
+    try:
+        window = run_cmd(FOCUSED_CMD)
+    except:
+        window = None
 
     if prev_window == window:
       continue
