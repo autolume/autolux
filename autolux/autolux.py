@@ -16,7 +16,7 @@ MIN_BRIGHT=5000
 
 # interval between screenshots
 SLEEP_TIME=1200
-TRANSITION_MS=400
+TRANSITION_MS=800
 RECALIBRATE_MS=60 * 1000
 
 # EXAMPLE: 100x200+300+400
@@ -24,6 +24,12 @@ RECALIBRATE_MS=60 * 1000
 CROP_SCREEN="10x100%+400+0"
 
 SCREENSHOT_CMD='import -colorspace gray -screen -w root -quality 20'
+BRIGHTNESS_CMD='-format "%[mean]" info:'
+# change brightness when PID changes
+# FOCUSED_CMD='xdotool getwindowfocus getwindowpid'
+# change brightness when window name changes
+FOCUSED_CMD='xdotool getwindowfocus getwindowname'
+
 VERBOSE=False
 def load_options():
   global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, CROP_SCREEN
@@ -65,7 +71,6 @@ def load_options():
   if CROP_SCREEN is not None:
     SCREENSHOT_CMD += ' -crop %s' % CROP_SCREEN
 
-  SCREENSHOT_CMD += " %s" % FILENAME
   print "SCREENSHOT CMD", SCREENSHOT_CMD
 
 
@@ -95,11 +100,6 @@ def run_cmd(cmd, bg=False):
 
 FILENAME="ss.jpeg"
 
-BRIGHTNESS_CMD='convert %s -format "%%[mean]" info:' % (FILENAME)
-# FOCUSED_CMD='xdotool getwindowfocus getwindowpid'
-# use getwindowname if you dare
-FOCUSED_CMD='xdotool getwindowfocus getwindowname'
-
 def monitor_luma():
   prev_brightness = None
   prev_window = None
@@ -121,13 +121,11 @@ def monitor_luma():
 
     suppressed_time = 0
 
-    run_cmd(SCREENSHOT_CMD)
-
     try: window = run_cmd(FOCUSED_CMD) 
     except: window = None
     prev_window = window
 
-    brightness = run_cmd(BRIGHTNESS_CMD)
+    brightness = run_cmd(SCREENSHOT_CMD + " " + BRIGHTNESS_CMD)
 
 
     try:
