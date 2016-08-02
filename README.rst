@@ -24,11 +24,3 @@ usage
 
     autolux
 
-
-how it works
-------------
-
-autolux is a simple python script that takes a screenshot of a vertical strip
-every few seconds and calculates the average pixel value. in order to save CPU,
-a screenshot is only taken if the window has changed since the last time a
-screenshot was taken

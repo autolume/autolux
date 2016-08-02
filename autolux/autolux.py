@@ -16,8 +16,8 @@ MIN_BRIGHT=5000
 
 # interval between screenshots
 SLEEP_TIME=1200
-
 TRANSITION_MS=400
+RECALIBRATE_MS=60 * 1000
 
 # EXAMPLE: 100x200+300+400
 # 100 width, 200 height, 300 offset from left, 400 offset from top
@@ -26,19 +26,29 @@ CROP_SCREEN="10x100%+400+0"
 SCREENSHOT_CMD='import -colorspace gray -screen -w root -quality 20'
 VERBOSE=False
 def load_options():
-  global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, SLEEP_TIME, TRANSITION_MS, CROP_SCREEN
-  global VERBOSE
+  global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, CROP_SCREEN
+  global SLEEP_TIME, TRANSITION_MS, RECALIBRATE_MS
+  global VERBOSE 
 
   from optparse import OptionParser
   parser = OptionParser()
-  parser.add_option("--min-level", dest="min_level", type="int", default=MIN_LEVEL)
-  parser.add_option("--max-level", dest="max_level", type="int", default=MAX_LEVEL)
-  parser.add_option("--interval", dest="interval", type="int", default=SLEEP_TIME)
-  parser.add_option("--min-bright", dest="min_bright", type="int", default=MIN_BRIGHT)
-  parser.add_option("--max-bright", dest="max_bright", type="int", default=MAX_BRIGHT)
-  parser.add_option("--fade-time", dest="fade_time", type="int", default=TRANSITION_MS)
-  parser.add_option("--crop", dest="crop_screen", type='str', default=CROP_SCREEN)
-  parser.add_option("--verbose", dest="verbose", action="store_true")
+  parser.add_option("--min-level", dest="min_level", type="int", default=MIN_LEVEL,
+    help="min brightness level (from 1 to 100, default is %s)" % MIN_LEVEL)
+  parser.add_option("--max-level", dest="max_level", type="int", default=MAX_LEVEL,
+    help="max brightness level (from 1 to 100, default is %s)" % MAX_LEVEL)
+  parser.add_option("--interval", dest="interval", type="int", default=SLEEP_TIME,
+    help="take screen snapshot every INTERVAL ms and readjust the screen brightness, default is %s" % SLEEP_TIME)
+  parser.add_option("--min-bright", dest="min_bright", type="int", default=MIN_BRIGHT,
+    help="upper brightness threshold before setting screen to lowest brightness (45K to 65K, default is %s)" % MIN_BRIGHT)
+  parser.add_option("--max-bright", dest="max_bright", type="int", default=MAX_BRIGHT,
+  help="lower brightness threshold before setting screen to highest brightness (1K to 15K, default is %s)" % MIN_BRIGHT)
+  parser.add_option("--recalibrate-time", dest="recalibrate", type="int", 
+    default=RECALIBRATE_MS, help="ms before recalibrating even if the window hasn't changed. set to 0 to disable, default is 60K")
+  parser.add_option("--fade-time", dest="fade_time", type="int", default=TRANSITION_MS,
+    help="time to fade backlight in ms, default is %s" % TRANSITION_MS)
+  parser.add_option("--crop", dest="crop_screen", type='str', default=CROP_SCREEN,
+    help="area to inspect, use imagemagick geometry style string (f.e. 50%x20%+400+100 means 50% width, 20% height at offset 400x and 100y)")
+  parser.add_option("--verbose", dest="verbose", action="store_true", help="turn on verbose output, including screenshot timing info")
 
 
   options, args = parser.parse_args()
@@ -49,6 +59,7 @@ def load_options():
   TRANSITION_MS = options.fade_time
   CROP_SCREEN = options.crop_screen
   VERBOSE = options.verbose
+  RECALIBRATE_MS = options.recalibrate
 
   global SCREENSHOT_CMD
   if CROP_SCREEN is not None:
@@ -66,6 +77,7 @@ def print_config():
   print "SLEEP TIME:", SLEEP_TIME
   print "DISPLAY RANGE:", MIN_LEVEL, MAX_LEVEL
   print "BRIGHTNESS RANGE:", MIN_BRIGHT, MAX_BRIGHT
+  print "RECALIBRATE EVERY:", RECALIBRATE_MS
 
 def run_cmd(cmd, bg=False):
   args = shlex.split(cmd)
@@ -103,9 +115,11 @@ def monitor_luma():
     if prev_window == window:
       suppressed_time += SLEEP_TIME / 1000
 
-      if suppressed_time < 60 * 1000:
+      if RECALIBRATE_MS > 0 and suppressed_time < RECALIBRATE_MS:
           continue
-      suppressed_time = 0
+      print "RECALIBRATING BRIGHTNESS AFTER %S ms" % RECALIBRATE_MS
+
+    suppressed_time = 0
 
     run_cmd(SCREENSHOT_CMD)
 
