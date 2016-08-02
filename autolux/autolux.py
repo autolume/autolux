@@ -146,7 +146,7 @@ def monitor_luma():
 
     if prev_brightness != new_level:
       print "AVG LUMA: %05i," % trimmed_mean, "NEW GAMMA: %.02f," % new_gamma, "NEW BRIGHTNESS:", "%s/%s" % (int(new_level), MAX_LEVEL)
-      run_cmd("xbacklight -set %s -time %s" % (new_level, TRANSITION_MS), bg=True)
+      run_cmd("xbacklight -set %s -time %s" % (new_level, TRANSITION_MS))
     prev_brightness = new_level
 
 def run():

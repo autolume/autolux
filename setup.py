@@ -1,8 +1,11 @@
 from distutils.core import setup
 
+desc = ""
+try: desc=open('README.rst').read()
+except: pass
 setup(
     name='autolux',
-    version='0.0.6',
+    version='0.0.9',
     author='okay',
     author_email='okay.zed+kk@gmail.com',
     packages=['autolux' ],
@@ -10,6 +13,6 @@ setup(
     url='http://github.com/okayzed/autolux',
     license='MIT',
     description='an auto luxer',
-    long_description=open('README.rst').read(),
+    long_description=desc
     )
 
