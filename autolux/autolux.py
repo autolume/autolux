@@ -96,9 +96,9 @@ def run_cmd(cmd, bg=False):
 FILENAME="ss.jpeg"
 
 BRIGHTNESS_CMD='convert %s -format "%%[mean]" info:' % (FILENAME)
-FOCUSED_CMD='xdotool getwindowfocus getwindowpid'
+# FOCUSED_CMD='xdotool getwindowfocus getwindowpid'
 # use getwindowname if you dare
-# FOCUSED_CMD='xdotool getwindowfocus getwindowname'
+FOCUSED_CMD='xdotool getwindowfocus getwindowname'
 
 def monitor_luma():
   prev_brightness = None
