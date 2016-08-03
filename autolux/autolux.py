@@ -25,16 +25,19 @@ CROP_SCREEN="10x100%+400+0"
 
 SCREENSHOT_CMD='import -colorspace gray -screen -w root -quality 20'
 BRIGHTNESS_CMD='-format "%[mean]" info:'
-# change brightness when PID changes
-# FOCUSED_CMD='xdotool getwindowfocus getwindowpid'
+
+# change brightness when PID changes or
+# change brightness when window changes
+CHECK_PID=False
+CHECK_PID_CMD='xdotool getwindowfocus getwindowpid'
 # change brightness when window name changes
-FOCUSED_CMD='xdotool getwindowfocus getwindowname'
+CHECK_TITLE_CMD='xdotool getwindowfocus getwindowname'
 
 VERBOSE=False
 def load_options():
   global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, CROP_SCREEN
   global SLEEP_TIME, TRANSITION_MS, RECALIBRATE_MS
-  global VERBOSE 
+  global VERBOSE, CHECK_PID
 
   from optparse import OptionParser
   parser = OptionParser()
@@ -48,13 +51,15 @@ def load_options():
     help="upper brightness threshold before setting screen to lowest brightness (45K to 65K, default is %s)" % MIN_BRIGHT)
   parser.add_option("--max-bright", dest="max_bright", type="int", default=MAX_BRIGHT,
   help="lower brightness threshold before setting screen to highest brightness (1K to 15K, default is %s)" % MIN_BRIGHT)
-  parser.add_option("--recalibrate-time", dest="recalibrate", type="int", 
+  parser.add_option("--recalibrate-time", dest="recalibrate", type="int",
     default=RECALIBRATE_MS, help="ms before recalibrating even if the window hasn't changed. set to 0 to disable, default is 60K")
   parser.add_option("--fade-time", dest="fade_time", type="int", default=TRANSITION_MS,
     help="time to fade backlight in ms, default is %s" % TRANSITION_MS)
   parser.add_option("--crop", dest="crop_screen", type='str', default=CROP_SCREEN,
     help="area to inspect, use imagemagick geometry style string (f.e. 50%x20%+400+100 means 50% width, 20% height at offset 400x and 100y)")
   parser.add_option("--verbose", dest="verbose", action="store_true", help="turn on verbose output, including screenshot timing info")
+  parser.add_option("--pid", dest="check_pid", action="store_true", help="check screen brightness when PID changes")
+  parser.add_option("--title", dest="check_pid", action="store_false", help="check screen brightness when window changes")
 
 
   options, args = parser.parse_args()
@@ -66,6 +71,7 @@ def load_options():
   CROP_SCREEN = options.crop_screen
   VERBOSE = options.verbose
   RECALIBRATE_MS = options.recalibrate
+  CHECK_PID = options.check_pid
 
   global SCREENSHOT_CMD
   if CROP_SCREEN is not None:
@@ -109,7 +115,11 @@ def monitor_luma():
   while True:
     time.sleep(SLEEP_TIME / 1000.0)
 
-    try: window = run_cmd(FOCUSED_CMD) 
+    focused_cmd = CHECK_TITLE_CMD
+    if CHECK_PID:
+      focused_cmd = CHECK_PID_CMD
+
+    try: window = run_cmd(focused_cmd)
     except: window = None
 
     if prev_window == window:
@@ -121,7 +131,7 @@ def monitor_luma():
 
     suppressed_time = 0
 
-    try: window = run_cmd(FOCUSED_CMD) 
+    try: window = run_cmd(focused_cmd)
     except: window = None
     prev_window = window
 
