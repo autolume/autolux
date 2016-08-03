@@ -89,6 +89,8 @@ def print_config():
   print "DISPLAY RANGE:", MIN_LEVEL, MAX_LEVEL
   print "BRIGHTNESS RANGE:", MIN_BRIGHT, MAX_BRIGHT
   print "RECALIBRATE EVERY:", RECALIBRATE_MS
+  print "FOLLOW WINDOW PID:", not not CHECK_PID
+  print "FOLLOW WINDOW TITLE:", not CHECK_PID
 
 def run_cmd(cmd, bg=False):
   args = shlex.split(cmd)

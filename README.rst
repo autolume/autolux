@@ -15,6 +15,7 @@ installation
 dependencies
 ------------
 
+* python2 (not python3)
 * imagemagick (for screenshots + determining average brightness)
 * xdotool (finding focused window)
 * xbacklight (for setting display brightness)
