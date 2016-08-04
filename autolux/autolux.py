@@ -33,11 +33,13 @@ CHECK_PID_CMD='xdotool getwindowfocus getwindowpid'
 # change brightness when window name changes
 CHECK_TITLE_CMD='xdotool getwindowfocus getwindowname'
 
+CALIBRATION_MODE=False
+
 VERBOSE=False
 def load_options():
   global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, CROP_SCREEN
   global SLEEP_TIME, TRANSITION_MS, RECALIBRATE_MS
-  global VERBOSE, CHECK_PID
+  global VERBOSE, CHECK_PID, CALIBRATION_MODE
 
   from optparse import OptionParser
   parser = OptionParser()
@@ -60,6 +62,7 @@ def load_options():
   parser.add_option("--verbose", dest="verbose", action="store_true", help="turn on verbose output, including screenshot timing info")
   parser.add_option("--pid", dest="check_pid", action="store_true", help="check screen brightness when PID changes")
   parser.add_option("--title", dest="check_pid", action="store_false", help="check screen brightness when window changes")
+  parser.add_option("--clog", dest="calibrate", action="store_true", help="add calibration logging")
 
 
   options, args = parser.parse_args()
@@ -72,6 +75,7 @@ def load_options():
   VERBOSE = options.verbose
   RECALIBRATE_MS = options.recalibrate
   CHECK_PID = options.check_pid
+  CALIBRATION_MODE=options.calibrate
 
   global SCREENSHOT_CMD
   if CROP_SCREEN is not None:
@@ -88,6 +92,7 @@ def print_config():
   print "SLEEP TIME:", SLEEP_TIME
   print "DISPLAY RANGE:", MIN_LEVEL, MAX_LEVEL
   print "BRIGHTNESS RANGE:", MIN_BRIGHT, MAX_BRIGHT
+  print "CALIBRATION LOG:", CALIBRATION_MODE
   print "RECALIBRATE EVERY:", RECALIBRATE_MS
   print "FOLLOW WINDOW PID:", not not CHECK_PID
   print "FOLLOW WINDOW TITLE:", not CHECK_PID
@@ -106,13 +111,16 @@ def run_cmd(cmd, bg=False):
     print "TIME:", end - start, "CMD", cmd.split()[0]
   return ret
 
-FILENAME="ss.jpeg"
-
 def monitor_luma():
   prev_brightness = None
   prev_window = None
+  prev_mean = None
+
   cur_range = MAX_BRIGHT - MIN_BRIGHT
   suppressed_time = 0
+
+  last_calibrate = int(time.time())
+
 
   while True:
     time.sleep(SLEEP_TIME / 1000.0)
@@ -127,11 +135,20 @@ def monitor_luma():
     if prev_window == window:
       suppressed_time += SLEEP_TIME / 1000
 
+      if CALIBRATION_MODE:
+        now = int(time.time())
+        cur_bright = float(run_cmd("xbacklight -get"))
+        if abs(prev_brightness - cur_bright) > 1 and now - last_calibrate > next_calibrate:
+          print "USER|TS:%s, LUMA:%05i, CUR:%.02f, EXP:%s" % (now, prev_mean, cur_bright, prev_brightness)
+          next_calibrate = min(2*next_calibrate, RECALIBRATE_MS / 1000)
+          last_calibrate = now
+
       if RECALIBRATE_MS > 0 and suppressed_time < RECALIBRATE_MS:
           continue
       print "RECALIBRATING BRIGHTNESS AFTER %S ms" % RECALIBRATE_MS
 
     suppressed_time = 0
+    next_calibrate = 1
 
     try: window = run_cmd(focused_cmd)
     except: window = None
@@ -154,8 +171,12 @@ def monitor_luma():
     new_gamma = 1 - range_is
     new_level =  (MAX_LEVEL - MIN_LEVEL) * new_gamma + MIN_LEVEL
 
+    prev_mean = trimmed_mean
+
+    new_level = round(new_level) 
     if prev_brightness != new_level:
-      print "AVG LUMA: %05i," % trimmed_mean, "NEW GAMMA: %.02f," % new_gamma, "NEW BRIGHTNESS:", "%s/%s" % (int(new_level), MAX_LEVEL)
+      now = int(time.time())
+      print "MODEL|TS:%s," % now, "LUMA:%05i," % trimmed_mean, "NEW GAMMA:%.02f," % new_gamma, "NEW BRIGHTNESS:", "%s/%s" % (int(new_level), MAX_LEVEL)
       run_cmd("xbacklight -set %s -time %s" % (new_level, TRANSITION_MS))
     prev_brightness = new_level
 
