@@ -189,7 +189,7 @@ def get_mean_brightness(hour, luma):
   pred = int(total / weight)
   return pred
 
-MAX_LUMA_PTS=10
+MAX_LUMA_PTS=7
 def add_luma_brightness(hour, luma, cur_bright, backfill=None):
   if luma < 0:
     return
