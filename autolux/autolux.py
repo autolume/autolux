@@ -19,7 +19,8 @@ SLEEP_TIME=1200
 TRANSITION_MS=800
 RECALIBRATE_MS=60 * 1000
 
-LUMA_BUCKET=5000
+LUMA_BUCKET=500
+LUMA_SPREAD=5000
 
 # EXAMPLE: 100x200+300+400
 # 100 width, 200 height, 300 offset from left, 400 offset from top
@@ -197,10 +198,7 @@ def add_luma_brightness(hour, luma, cur_bright, backfill=False):
   new_pred = get_mean_brightness(hour, luma)
   now = int(time.time())
 
-  if backfill:
-    print "BACKFILL|TS:%s, LUMA:%05i, HOUR: %s, PREV:%s, NEW:%s" % (now, luma, hour, prev_bright_pred, new_pred)
-
-  else:
+  if not backfill:
     print "LEARN|TS:%s, LUMA:%05i, HOUR: %s, PREV:%s, NEW:%s" % (now, luma, hour, prev_bright_pred, new_pred)
 
 def monitor_luma():
@@ -242,8 +240,9 @@ def monitor_luma():
 
           for h in xrange(hour-1, hour+2):
             add_luma_brightness(h, prev_mean, cur_bright, backfill=True)
-            add_luma_brightness(h, prev_mean-LUMA_BUCKET, cur_bright, backfill=True)
-            add_luma_brightness(h, prev_mean+LUMA_BUCKET, cur_bright, backfill=True)
+            for b in xrange(LUMA_BUCKET, LUMA_SPREAD+LUMA_BUCKET, LUMA_BUCKET):
+              add_luma_brightness(h, prev_mean-b, cur_bright, backfill=True)
+              add_luma_brightness(h, prev_mean+b, cur_bright, backfill=True)
 
           save_luma_map()
 
