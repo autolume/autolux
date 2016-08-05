@@ -19,6 +19,8 @@ SLEEP_TIME=1200
 TRANSITION_MS=800
 RECALIBRATE_MS=60 * 1000
 
+LUMA_BUCKET=5000
+
 # EXAMPLE: 100x200+300+400
 # 100 width, 200 height, 300 offset from left, 400 offset from top
 CROP_SCREEN="10x100%+400+0"
@@ -111,6 +113,96 @@ def run_cmd(cmd, bg=False):
     print "TIME:", end - start, "CMD", cmd.split()[0]
   return ret
 
+
+# for a luma map, what we hold is:
+# time of day -> luma -> [p1,p2,p3]
+LUMA_MAP = {}
+
+try: import cpickle as pickle
+except: import pickle
+
+import os
+LUMA_FILE = os.path.expanduser("~/.config/autolux.luma_map")
+
+def load_luma_map():
+  try:
+    with open(LUMA_FILE) as f:
+      global LUMA_MAP
+      LUMA_MAP = pickle.load(f)
+      l = len(LUMA_MAP)
+      perc_str = "%i" % round(l / 24.0 * 100)
+      print "LOADED LUMA MAP FROM DISK, %s%% COMPLETE" % (perc_str)
+  except Exception, e:
+    print "WARNING: NOT LOADING LUMA MAP", e
+
+LAST_SAVE = None
+SAVE_INTERVAL=10000
+def save_luma_map(force=False):
+  now = int(time.time())
+  global LAST_SAVE
+  if force or not LAST_SAVE or now - LAST_SAVE > SAVE_INTERVAL:
+    try:
+      with open(LUMA_FILE, "wb") as f:
+        pickle.dump(LUMA_MAP, f)
+        last_save = now
+    except Exception, e:
+      print "WARNING: NOT SAVING LUMA MAP", e
+
+# TODO: nearest neighbors search here, instead of only looking for the current
+# hour and current luma
+def get_mean_brightness(hour, luma):
+  hour = int(hour)
+  if not hour in LUMA_MAP or not luma in LUMA_MAP[hour]:
+    return None
+
+  vals = LUMA_MAP[hour][luma]
+
+  if not vals:
+    return None
+
+  total = 0
+  weight = 0
+  for i,k in enumerate(vals):
+    total += (i+1) * k
+    weight += i+1
+
+  pred = int(total / weight)
+  return pred
+
+MAX_LUMA_PTS=10
+def add_luma_brightness(hour, luma, cur_bright, backfill=False):
+  if luma < 0:
+    return
+
+  hour = int(hour)
+
+  prev_bright_pred = get_mean_brightness(hour, luma)
+  if not hour in LUMA_MAP:
+    LUMA_MAP[hour] = {}
+
+  if not luma in LUMA_MAP[hour]:
+    LUMA_MAP[hour][luma] = []
+
+  if backfill and len(LUMA_MAP[hour][luma]) >= MAX_LUMA_PTS:
+    return
+
+  if backfill:
+    LUMA_MAP[hour][luma].insert(0, round(cur_bright))
+  else:
+    LUMA_MAP[hour][luma].append(round(cur_bright))
+
+  while len(LUMA_MAP[hour][luma]) > MAX_LUMA_PTS:
+    LUMA_MAP[hour][luma].pop(0)
+
+  new_pred = get_mean_brightness(hour, luma)
+  now = int(time.time())
+
+  if backfill:
+    print "BACKFILL|TS:%s, LUMA:%05i, HOUR: %s, PREV:%s, NEW:%s" % (now, luma, hour, prev_bright_pred, new_pred)
+
+  else:
+    print "LEARN|TS:%s, LUMA:%05i, HOUR: %s, PREV:%s, NEW:%s" % (now, luma, hour, prev_bright_pred, new_pred)
+
 def monitor_luma():
   prev_brightness = None
   prev_window = None
@@ -137,18 +229,31 @@ def monitor_luma():
 
       if CALIBRATION_MODE:
         now = int(time.time())
+        hour = int(time.strftime("%H"))
+
         cur_bright = float(run_cmd("xbacklight -get"))
         if abs(prev_brightness - cur_bright) > 1 and now - last_calibrate > next_calibrate:
-          print "USER|TS:%s, LUMA:%05i, CUR:%.02f, EXP:%s" % (now, prev_mean, cur_bright, prev_brightness)
-          next_calibrate = min(2*next_calibrate, RECALIBRATE_MS / 1000)
+          print "INPUT|TS:%s, LUMA:%05i, CUR:%.02f, EXP:%s" % (now, prev_mean, cur_bright, prev_brightness)
+
+          # now we map the luma -> current brightness based on time of day
+          next_calibrate = min(2*next_calibrate, 60 * 60 * 1000)
           last_calibrate = now
+          add_luma_brightness(hour, prev_mean, cur_bright)
+
+          for h in xrange(hour-1, hour+2):
+            add_luma_brightness(h, prev_mean, cur_bright, backfill=True)
+            add_luma_brightness(h, prev_mean-LUMA_BUCKET, cur_bright, backfill=True)
+            add_luma_brightness(h, prev_mean+LUMA_BUCKET, cur_bright, backfill=True)
+
+          save_luma_map()
+
 
       if RECALIBRATE_MS > 0 and suppressed_time < RECALIBRATE_MS:
           continue
       print "RECALIBRATING BRIGHTNESS AFTER %S ms" % RECALIBRATE_MS
 
     suppressed_time = 0
-    next_calibrate = 1
+    next_calibrate = 4
 
     try: window = run_cmd(focused_cmd)
     except: window = None
@@ -165,15 +270,22 @@ def monitor_luma():
 
 
     trimmed_mean = max(min(MAX_BRIGHT, cur_mean), MIN_BRIGHT) - MIN_BRIGHT
-    trimmed_mean = int(trimmed_mean / 500) * 500
+    trimmed_mean = int(trimmed_mean / LUMA_BUCKET) * LUMA_BUCKET
     range_is = float(trimmed_mean) / float(cur_range)
 
     new_gamma = 1 - range_is
+    hour = time.strftime("%H")
     new_level =  (MAX_LEVEL - MIN_LEVEL) * new_gamma + MIN_LEVEL
+
+    pred_level = get_mean_brightness(hour, trimmed_mean)
+    if pred_level is not None:
+      new_level = pred_level
+
+
 
     prev_mean = trimmed_mean
 
-    new_level = round(new_level) 
+    new_level = round(new_level)
     if prev_brightness != new_level:
       now = int(time.time())
       print "MODEL|TS:%s," % now, "LUMA:%05i," % trimmed_mean, "NEW GAMMA:%.02f," % new_gamma, "NEW BRIGHTNESS:", "%s/%s" % (int(new_level), MAX_LEVEL)
@@ -183,6 +295,7 @@ def monitor_luma():
 def run():
   load_options()
   print_config()
+  load_luma_map()
   monitor_luma()
 
 if __name__ == "__main__":
