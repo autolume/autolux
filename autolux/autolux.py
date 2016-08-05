@@ -116,6 +116,19 @@ def run_cmd(cmd, bg=False):
   return ret
 
 
+def get_brightness():
+  import xbacklight
+  if not xbacklight.can_use():
+    ret = float(run_cmd("xbacklight -get"))
+    return ret
+  else:
+    ctrls = xbacklight.get_controllers()
+    ctrl = xbacklight.Controller(ctrls[0])
+    ret = float(ctrl.brightness())
+    return ret
+
+
+
 # for a luma map, what we hold is:
 # time of day -> luma -> [p1,p2,p3]
 LUMA_MAP = {}
@@ -242,7 +255,7 @@ def monitor_luma():
         now = int(time.time())
         hour = get_hour()
 
-        cur_bright = float(run_cmd("xbacklight -get"))
+        cur_bright = get_brightness()
         if abs(prev_brightness - cur_bright) > 1 and now - last_calibrate > next_calibrate:
           print "INPUT|TS:%s, LUMA:%05i, CUR:%.02f, EXP:%s" % (now, prev_mean, cur_bright, prev_brightness)
 
