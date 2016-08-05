@@ -36,25 +36,26 @@ CHECK_PID_CMD='xdotool getwindowfocus getwindowpid'
 # change brightness when window name changes
 CHECK_TITLE_CMD='xdotool getwindowfocus getwindowname'
 
-CALIBRATION_MODE=False
+# default to True, now that we can skip using xbacklight
+LEARN_MODE=True
 
 VERBOSE=False
 def load_options():
   global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, CROP_SCREEN
   global SLEEP_TIME, TRANSITION_MS, RECALIBRATE_MS
-  global VERBOSE, CHECK_PID, CALIBRATION_MODE
+  global VERBOSE, CHECK_PID, LEARN_MODE
 
   from optparse import OptionParser
   parser = OptionParser()
-  parser.add_option("--min-level", dest="min_level", type="int", default=MIN_LEVEL,
+  parser.add_option("--min", "--min-level", dest="min_level", type="int", default=MIN_LEVEL,
     help="min brightness level (from 1 to 100, default is %s)" % MIN_LEVEL)
-  parser.add_option("--max-level", dest="max_level", type="int", default=MAX_LEVEL,
+  parser.add_option("--max", "--max-level", dest="max_level", type="int", default=MAX_LEVEL,
     help="max brightness level (from 1 to 100, default is %s)" % MAX_LEVEL)
   parser.add_option("--interval", dest="interval", type="int", default=SLEEP_TIME,
     help="take screen snapshot every INTERVAL ms and readjust the screen brightness, default is %s" % SLEEP_TIME)
-  parser.add_option("--min-bright", dest="min_bright", type="int", default=MIN_BRIGHT,
+  parser.add_option("--lower", "--lower-threshold", dest="min_bright", type="int", default=MIN_BRIGHT,
     help="upper brightness threshold before setting screen to lowest brightness (45K to 65K, default is %s)" % MIN_BRIGHT)
-  parser.add_option("--max-bright", dest="max_bright", type="int", default=MAX_BRIGHT,
+  parser.add_option("--upper", "--upper-threshold", dest="max_bright", type="int", default=MAX_BRIGHT,
   help="lower brightness threshold before setting screen to highest brightness (1K to 15K, default is %s)" % MIN_BRIGHT)
   parser.add_option("--recalibrate-time", dest="recalibrate", type="int",
     default=RECALIBRATE_MS, help="ms before recalibrating even if the window hasn't changed. set to 0 to disable, default is 60K")
@@ -65,8 +66,7 @@ def load_options():
   parser.add_option("--verbose", dest="verbose", action="store_true", help="turn on verbose output, including screenshot timing info")
   parser.add_option("--pid", dest="check_pid", action="store_true", help="check screen brightness when PID changes")
   parser.add_option("--title", dest="check_pid", action="store_false", help="check screen brightness when window changes")
-  parser.add_option("--clog", dest="calibrate", action="store_true", help="add calibration logging")
-  parser.add_option("--learn", dest="calibrate", action="store_true", help="learn brightness preferences")
+  parser.add_option("--no-learn", dest="learn", action="store_false", help="disable learning", default=LEARN_MODE)
 
 
   options, args = parser.parse_args()
@@ -79,7 +79,7 @@ def load_options():
   VERBOSE = options.verbose
   RECALIBRATE_MS = options.recalibrate
   CHECK_PID = options.check_pid
-  CALIBRATION_MODE=options.calibrate
+  LEARN_MODE=options.learn
 
   global SCREENSHOT_CMD
   if CROP_SCREEN is not None:
@@ -95,8 +95,8 @@ def print_config():
   print "FADE TIME:", TRANSITION_MS
   print "SLEEP TIME:", SLEEP_TIME
   print "DISPLAY RANGE:", MIN_LEVEL, MAX_LEVEL
+  print "LEARNING MODE:", LEARN_MODE
   print "BRIGHTNESS RANGE:", MIN_BRIGHT, MAX_BRIGHT
-  print "CALIBRATION LOG:", CALIBRATION_MODE
   print "RECALIBRATE EVERY:", RECALIBRATE_MS
   print "FOLLOW WINDOW PID:", not not CHECK_PID
   print "FOLLOW WINDOW TITLE:", not CHECK_PID
@@ -139,14 +139,18 @@ except: import pickle
 import os
 LUMA_FILE = os.path.expanduser("~/.config/autolux.luma_map")
 
+def print_luma_completion():
+  l = len(LUMA_MAP)
+  perc_str = "%i" % round(l / (24.0*(60/HOUR_SLICE)) * 100)
+  print "LUMA MAP IS %s%% COMPLETE" % (perc_str)
+
 def load_luma_map():
   try:
     with open(LUMA_FILE) as f:
       global LUMA_MAP
       LUMA_MAP = pickle.load(f)
-      l = len(LUMA_MAP)
-      perc_str = "%i" % round(l / (24.0*(60/HOUR_SLICE)) * 100)
-      print "LOADED LUMA MAP FROM DISK, %s%% COMPLETE" % (perc_str)
+      print "LOADING LUMA MAP FROM", LUMA_FILE
+      print_luma_completion()
   except Exception, e:
     print "WARNING: NOT LOADING LUMA MAP", e
 
@@ -178,8 +182,9 @@ def get_mean_brightness(hour, luma):
   total = 0
   weight = 0
   for i,k in enumerate(vals):
-    total += (i+1) * k
-    weight += i+1
+    wt = (i+1)**2
+    total += wt * k
+    weight += wt
 
   pred = int(total / weight)
   return pred
@@ -251,7 +256,7 @@ def monitor_luma():
     if prev_window == window:
       suppressed_time += SLEEP_TIME / 1000
 
-      if CALIBRATION_MODE:
+      if LEARN_MODE:
         now = int(time.time())
         hour = get_hour()
 
