@@ -66,6 +66,7 @@ def load_options():
   parser.add_option("--pid", dest="check_pid", action="store_true", help="check screen brightness when PID changes")
   parser.add_option("--title", dest="check_pid", action="store_false", help="check screen brightness when window changes")
   parser.add_option("--clog", dest="calibrate", action="store_true", help="add calibration logging")
+  parser.add_option("--learn", dest="calibrate", action="store_true", help="learn brightness preferences")
 
 
   options, args = parser.parse_args()
@@ -131,7 +132,7 @@ def load_luma_map():
       global LUMA_MAP
       LUMA_MAP = pickle.load(f)
       l = len(LUMA_MAP)
-      perc_str = "%i" % round(l / 24.0 * 100)
+      perc_str = "%i" % round(l / (24.0*(60/HOUR_SLICE)) * 100)
       print "LOADED LUMA MAP FROM DISK, %s%% COMPLETE" % (perc_str)
   except Exception, e:
     print "WARNING: NOT LOADING LUMA MAP", e
@@ -171,7 +172,7 @@ def get_mean_brightness(hour, luma):
   return pred
 
 MAX_LUMA_PTS=10
-def add_luma_brightness(hour, luma, cur_bright, backfill=False):
+def add_luma_brightness(hour, luma, cur_bright, backfill=None):
   if luma < 0:
     return
 
@@ -184,11 +185,8 @@ def add_luma_brightness(hour, luma, cur_bright, backfill=False):
   if not luma in LUMA_MAP[hour]:
     LUMA_MAP[hour][luma] = []
 
-  if backfill and len(LUMA_MAP[hour][luma]) >= MAX_LUMA_PTS:
-    return
-
-  if backfill:
-    LUMA_MAP[hour][luma].insert(0, round(cur_bright))
+  if backfill is not None:
+    LUMA_MAP[hour][luma].insert(max(MAX_LUMA_PTS - backfill, 0), round(cur_bright))
   else:
     LUMA_MAP[hour][luma].append(round(cur_bright))
 
@@ -199,7 +197,22 @@ def add_luma_brightness(hour, luma, cur_bright, backfill=False):
   now = int(time.time())
 
   if not backfill:
-    print "LEARN|TS:%s, LUMA:%05i, HOUR: %s, PREV:%s, NEW:%s" % (now, luma, hour, prev_bright_pred, new_pred)
+    print "LEARN|TS:%s, LUMA:%05i, HOUR: %s, PREV:%s, NEW:%s" % (now, luma, fmt_hour(hour), prev_bright_pred, new_pred)
+
+HOUR_SLICE=10
+HOUR_SPREAD=60
+
+def get_hour():
+  hour = int(time.strftime("%H")) * 60
+  hour_slice = round(int(time.strftime("%M")) / HOUR_SLICE) * HOUR_SLICE
+  hour = hour + hour_slice
+  return hour
+
+def fmt_hour(minutes):
+  hour = minutes / 60
+  mnt = int((minutes % 60) / HOUR_SLICE) * HOUR_SLICE
+
+  return "%02i:%02i" % (hour, mnt)
 
 def monitor_luma():
   prev_brightness = None
@@ -227,7 +240,7 @@ def monitor_luma():
 
       if CALIBRATION_MODE:
         now = int(time.time())
-        hour = int(time.strftime("%H"))
+        hour = get_hour()
 
         cur_bright = float(run_cmd("xbacklight -get"))
         if abs(prev_brightness - cur_bright) > 1 and now - last_calibrate > next_calibrate:
@@ -236,13 +249,20 @@ def monitor_luma():
           # now we map the luma -> current brightness based on time of day
           next_calibrate = min(2*next_calibrate, 60 * 60 * 1000)
           last_calibrate = now
-          add_luma_brightness(hour, prev_mean, cur_bright)
 
-          for h in xrange(hour-1, hour+2):
-            add_luma_brightness(h, prev_mean, cur_bright, backfill=True)
-            for b in xrange(LUMA_BUCKET, LUMA_SPREAD+LUMA_BUCKET, LUMA_BUCKET):
-              add_luma_brightness(h, prev_mean-b, cur_bright, backfill=True)
-              add_luma_brightness(h, prev_mean+b, cur_bright, backfill=True)
+          add_luma_brightness(hour, prev_mean, cur_bright)
+          for i, h in enumerate(xrange(HOUR_SLICE, HOUR_SPREAD, HOUR_SLICE)):
+            low_hour = (hour-h) % (24*60)
+            high_hour = (hour+h) % (24*60)
+            hour_dist = i+1
+            add_luma_brightness(low_hour, prev_mean, cur_bright, backfill=hour_dist)
+            add_luma_brightness(high_hour, prev_mean, cur_bright, backfill=hour_dist)
+            for j, b in enumerate(xrange(LUMA_BUCKET, LUMA_SPREAD+LUMA_BUCKET, LUMA_BUCKET)):
+              luma_dist = j+1
+              add_luma_brightness(low_hour, prev_mean-b, cur_bright, backfill=hour_dist+luma_dist)
+              add_luma_brightness(low_hour, prev_mean+b, cur_bright, backfill=hour_dist+luma_dist)
+              add_luma_brightness(high_hour, prev_mean-b, cur_bright, backfill=hour_dist+luma_dist)
+              add_luma_brightness(high_hour, prev_mean+b, cur_bright, backfill=hour_dist+luma_dist)
 
           save_luma_map()
 
@@ -273,7 +293,7 @@ def monitor_luma():
     range_is = float(trimmed_mean) / float(cur_range)
 
     new_gamma = 1 - range_is
-    hour = time.strftime("%H")
+    hour = get_hour()
     new_level =  (MAX_LEVEL - MIN_LEVEL) * new_gamma + MIN_LEVEL
 
     pred_level = get_mean_brightness(hour, trimmed_mean)
@@ -284,7 +304,7 @@ def monitor_luma():
 
     prev_mean = trimmed_mean
 
-    new_level = round(new_level)
+    new_level = max(round(new_level), 1)
     if prev_brightness != new_level:
       now = int(time.time())
       print "MODEL|TS:%s," % now, "LUMA:%05i," % trimmed_mean, "NEW GAMMA:%.02f," % new_gamma, "NEW BRIGHTNESS:", "%s/%s" % (int(new_level), MAX_LEVEL)
