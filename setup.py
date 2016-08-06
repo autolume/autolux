@@ -5,12 +5,12 @@ try: desc=open('README.rst').read()
 except: pass
 setup(
     name='autolux',
-    version='0.0.19',
+    version='0.0.21',
     author='okay',
-    author_email='okay.zed+kk@gmail.com',
+    author_email='okay.zed+al@gmail.com',
     packages=['autolux' ],
     scripts=['bin/autolux'],
-    url='http://github.com/okayzed/autolux',
+    url='http://github.com/autolume/autolux',
     license='MIT',
     description='an auto luxer',
     long_description=desc

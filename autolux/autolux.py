@@ -21,6 +21,14 @@ RECALIBRATE_MS=60 * 1000
 
 LUMA_BUCKET=500
 LUMA_SPREAD=5000
+# for a luma map, what we hold is:
+# time of day -> luma -> [p1,p2,p3]
+LUMA_MAP = {}
+
+import os
+LUMA_FILE=None
+LUMA_FILE_DEFAULT = os.path.expanduser("~/.config/autolux.luma_map")
+
 
 # EXAMPLE: 100x200+300+400
 # 100 width, 200 height, 300 offset from left, 400 offset from top
@@ -38,12 +46,14 @@ CHECK_TITLE_CMD='xdotool getwindowfocus getwindowname'
 
 # default to True, now that we can skip using xbacklight
 LEARN_MODE=True
+VIZ_LUMA_MAP=False
 
 VERBOSE=False
 def load_options():
   global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, CROP_SCREEN
   global SLEEP_TIME, TRANSITION_MS, RECALIBRATE_MS
-  global VERBOSE, CHECK_PID, LEARN_MODE
+  global VERBOSE, CHECK_PID, LEARN_MODE,VIZ_LUMA_MAP
+  global LUMA_FILE
 
   from optparse import OptionParser
   parser = OptionParser()
@@ -67,6 +77,8 @@ def load_options():
   parser.add_option("--pid", dest="check_pid", action="store_true", help="check screen brightness when PID changes")
   parser.add_option("--title", dest="check_pid", action="store_false", help="check screen brightness when window changes")
   parser.add_option("--no-learn", dest="learn", action="store_false", help="disable learning", default=LEARN_MODE)
+  parser.add_option("--file", dest="luma_file", help="luma file to load", default=LUMA_FILE_DEFAULT)
+  parser.add_option("--vis", dest="visualize", action="store_true", help="visualize your brightness model", default=VIZ_LUMA_MAP)
 
 
   options, args = parser.parse_args()
@@ -80,12 +92,12 @@ def load_options():
   RECALIBRATE_MS = options.recalibrate
   CHECK_PID = options.check_pid
   LEARN_MODE=options.learn
+  VIZ_LUMA_MAP=options.visualize
+  LUMA_FILE=options.luma_file
 
   global SCREENSHOT_CMD
   if CROP_SCREEN is not None:
     SCREENSHOT_CMD += ' -crop %s' % CROP_SCREEN
-
-  print "SCREENSHOT CMD", SCREENSHOT_CMD
 
 
 
@@ -100,6 +112,8 @@ def print_config():
   print "RECALIBRATE EVERY:", RECALIBRATE_MS
   print "FOLLOW WINDOW PID:", not not CHECK_PID
   print "FOLLOW WINDOW TITLE:", not CHECK_PID
+  print "SCREENSHOT CMD", SCREENSHOT_CMD
+
 
 def run_cmd(cmd, bg=False):
   args = shlex.split(cmd)
@@ -111,7 +125,7 @@ def run_cmd(cmd, bg=False):
     subprocess.Popen(args)
 
   end = int(round(time.time() * 1000))
-  if VERBOSE:
+  if VERBOSE and end - start > 50:
     print "TIME:", end - start, "CMD", cmd.split()[0]
   return ret
 
@@ -129,27 +143,23 @@ def get_brightness():
 
 
 
-# for a luma map, what we hold is:
-# time of day -> luma -> [p1,p2,p3]
-LUMA_MAP = {}
-
 try: import cpickle as pickle
 except: import pickle
-
-import os
-LUMA_FILE = os.path.expanduser("~/.config/autolux.luma_map")
 
 def print_luma_completion():
   l = len(LUMA_MAP)
   perc_str = "%i" % round(l / (24.0*(60/HOUR_SLICE)) * 100)
   print "LUMA MAP IS %s%% COMPLETE" % (perc_str)
 
-def load_luma_map():
+def get_luma_file():
+  return LUMA_FILE
+
+def load_luma_map(luma_file=LUMA_FILE):
+  print "LOADING LUMA MAP", luma_file
   try:
-    with open(LUMA_FILE) as f:
+    with open(luma_file) as f:
       global LUMA_MAP
       LUMA_MAP = pickle.load(f)
-      print "LOADING LUMA MAP FROM", LUMA_FILE
       print_luma_completion()
   except Exception, e:
     print "WARNING: NOT LOADING LUMA MAP", e
@@ -167,6 +177,18 @@ def save_luma_map(force=False):
     except Exception, e:
       print "WARNING: NOT SAVING LUMA MAP", e
 
+
+def get_predicted_brightness(vals):
+  total = 0
+  weight = 0
+  for i,k in enumerate(vals):
+    wt = (i+1)**2
+    total += wt * k
+    weight += wt
+
+  pred = int(total / weight)
+  return pred
+
 # TODO: nearest neighbors search here, instead of only looking for the current
 # hour and current luma
 def get_mean_brightness(hour, luma):
@@ -179,15 +201,7 @@ def get_mean_brightness(hour, luma):
   if not vals:
     return None
 
-  total = 0
-  weight = 0
-  for i,k in enumerate(vals):
-    wt = (i+1)**2
-    total += wt * k
-    weight += wt
-
-  pred = int(total / weight)
-  return pred
+  return get_predicted_brightness(vals)
 
 MAX_LUMA_PTS=7
 def add_luma_brightness(hour, luma, cur_bright, backfill=None):
@@ -219,6 +233,7 @@ def add_luma_brightness(hour, luma, cur_bright, backfill=None):
 
 HOUR_SLICE=10
 HOUR_SPREAD=60
+
 
 def get_hour():
   hour = int(time.strftime("%H")) * 60
@@ -269,7 +284,7 @@ def monitor_luma():
           last_calibrate = now
 
           add_luma_brightness(hour, prev_mean, cur_bright)
-          for i, h in enumerate(xrange(HOUR_SLICE, HOUR_SPREAD, HOUR_SLICE)):
+          for i, h in enumerate(xrange(HOUR_SLICE, HOUR_SPREAD*3, HOUR_SLICE)):
             low_hour = (hour-h) % (24*60)
             high_hour = (hour+h) % (24*60)
             hour_dist = i+1
@@ -331,9 +346,14 @@ def monitor_luma():
 
 def run():
   load_options()
-  print_config()
-  load_luma_map()
-  monitor_luma()
+
+  if VIZ_LUMA_MAP:
+    import luma_vis
+    luma_vis.visualize(LUMA_FILE)
+  else:
+    print_config()
+    load_luma_map(LUMA_FILE)
+    monitor_luma()
 
 if __name__ == "__main__":
   run()
