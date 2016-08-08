@@ -4,6 +4,7 @@
 import time
 import os
 import shlex, subprocess
+import math
 
 
 # BRIGHTNESS LEVELS (should be between 1 and 100)
@@ -150,8 +151,19 @@ except: import pickle
 
 def print_luma_completion():
   l = len(LUMA_MAP)
-  perc_str = "%i" % round(l / (24.0*(60/HOUR_SLICE)) * 100)
-  print "LUMA MAP IS %s%% COMPLETE" % (perc_str)
+  num_minute_buckets = (24.0*(60/HOUR_SLICE))
+  time_perc_str = "%i" % round(l / num_minute_buckets * 100)
+
+  num_luma_buckets = int((MAX_BRIGHT - MIN_BRIGHT) / LUMA_BUCKET)
+  expected_obs = len(LUMA_MAP) * num_luma_buckets
+  total_obs = 0.0
+  for luma in LUMA_MAP:
+    total_obs += len(LUMA_MAP[luma])
+
+  luma_perc_str = "%i" % round(total_obs / expected_obs * 100)
+  print "TIME MAP IS %s%% COMPLETE, LUMA MAP IS %s%% COMPLETE" % (time_perc_str, luma_perc_str)
+
+
 
 def get_luma_file():
   return LUMA_FILE
@@ -345,10 +357,11 @@ def monitor_luma():
             add_luma_brightness(high_hour, prev_mean, cur_bright, backfill=hour_dist)
             for j, b in enumerate(xrange(LUMA_BUCKET, LUMA_SPREAD+LUMA_BUCKET, LUMA_BUCKET)):
               luma_dist = j+1
-              add_luma_brightness(low_hour, prev_mean-b, cur_bright, backfill=hour_dist+luma_dist)
-              add_luma_brightness(low_hour, prev_mean+b, cur_bright, backfill=hour_dist+luma_dist)
-              add_luma_brightness(high_hour, prev_mean-b, cur_bright, backfill=hour_dist+luma_dist)
-              add_luma_brightness(high_hour, prev_mean+b, cur_bright, backfill=hour_dist+luma_dist)
+              total_dist = int(math.sqrt(hour_dist + luma_dist))
+              add_luma_brightness(low_hour, prev_mean-b, cur_bright, backfill=total_dist)
+              add_luma_brightness(low_hour, prev_mean+b, cur_bright, backfill=total_dist)
+              add_luma_brightness(high_hour, prev_mean-b, cur_bright, backfill=total_dist)
+              add_luma_brightness(high_hour, prev_mean+b, cur_bright, backfill=total_dist)
 
           save_luma_map()
 
