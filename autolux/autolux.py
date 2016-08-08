@@ -34,8 +34,8 @@ LUMA_FILE_DEFAULT = os.path.expanduser("~/.config/autolux.luma_map")
 
 # EXAMPLE: 100x200+300+400
 # 100 width, 200 height, 300 offset from left, 400 offset from top
-# CROP_SCREEN="10x100%+400+0"
-CROP_SCREEN="90%x10+200+400"
+CROP_SCREEN="10x100%+400+0"
+HORIZ_CROP_SCREEN="90%x10+200+400"
 
 SCREENSHOT_CMD='import -colorspace gray -screen -w root -quality 20'
 BRIGHTNESS_CMD='-format "%[mean]" info:'
@@ -82,6 +82,7 @@ def load_options():
   parser.add_option("--no-learn", dest="learn", action="store_false", help="disable learning", default=LEARN_MODE)
   parser.add_option("--file", dest="luma_file", help="luma file to load", default=LUMA_FILE_DEFAULT)
   parser.add_option("--vis", dest="visualize", action="store_true", help="visualize your brightness model", default=VIZ_LUMA_MAP)
+  parser.add_option("--horizontal", dest="horizontal", action="store_true", help="take a horizontal screenshot instead of vertical")
 
 
   options, args = parser.parse_args()
@@ -97,6 +98,9 @@ def load_options():
   LEARN_MODE=options.learn
   VIZ_LUMA_MAP=options.visualize
   LUMA_FILE=options.luma_file
+
+  if options.horizontal:
+    CROP_SCREEN = HORIZ_CROP_SCREEN
 
   global SCREENSHOT_CMD
   if CROP_SCREEN is not None:
