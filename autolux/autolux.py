@@ -15,7 +15,8 @@ MAX_BRIGHT=50000
 MIN_BRIGHT=5000
 
 # interval between screenshots
-SLEEP_TIME=1200
+SLEEP_TIME=67
+SCREENSHOT_TIME=1200
 TRANSITION_MS=800
 RECALIBRATE_MS=60 * 1000
 
@@ -32,7 +33,8 @@ LUMA_FILE_DEFAULT = os.path.expanduser("~/.config/autolux.luma_map")
 
 # EXAMPLE: 100x200+300+400
 # 100 width, 200 height, 300 offset from left, 400 offset from top
-CROP_SCREEN="10x100%+400+0"
+# CROP_SCREEN="10x100%+400+0"
+CROP_SCREEN="90%x10+200+400"
 
 SCREENSHOT_CMD='import -colorspace gray -screen -w root -quality 20'
 BRIGHTNESS_CMD='-format "%[mean]" info:'
@@ -51,7 +53,7 @@ VIZ_LUMA_MAP=False
 VERBOSE=False
 def load_options():
   global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, CROP_SCREEN
-  global SLEEP_TIME, TRANSITION_MS, RECALIBRATE_MS
+  global SLEEP_TIME, TRANSITION_MS, RECALIBRATE_MS, SCREENSHOT_TIME
   global VERBOSE, CHECK_PID, LEARN_MODE,VIZ_LUMA_MAP
   global LUMA_FILE
 
@@ -61,8 +63,8 @@ def load_options():
     help="min brightness level (from 1 to 100, default is %s)" % MIN_LEVEL)
   parser.add_option("--max", "--max-level", dest="max_level", type="int", default=MAX_LEVEL,
     help="max brightness level (from 1 to 100, default is %s)" % MAX_LEVEL)
-  parser.add_option("--interval", dest="interval", type="int", default=SLEEP_TIME,
-    help="take screen snapshot every INTERVAL ms and readjust the screen brightness, default is %s" % SLEEP_TIME)
+  parser.add_option("--interval", dest="interval", type="int", default=SCREENSHOT_TIME,
+    help="take screen snapshot every INTERVAL ms and readjust the screen brightness, default is %s" % SCREENSHOT_TIME)
   parser.add_option("--lower", "--lower-threshold", dest="min_bright", type="int", default=MIN_BRIGHT,
     help="upper brightness threshold before setting screen to lowest brightness (45K to 65K, default is %s)" % MIN_BRIGHT)
   parser.add_option("--upper", "--upper-threshold", dest="max_bright", type="int", default=MAX_BRIGHT,
@@ -84,7 +86,7 @@ def load_options():
   options, args = parser.parse_args()
   MIN_LEVEL = options.min_level
   MAX_LEVEL = options.max_level
-  SLEEP_TIME = options.interval
+  SCREENSHOT_TIME = options.interval
   MAX_LEVEL = options.max_level
   TRANSITION_MS = options.fade_time
   CROP_SCREEN = options.crop_screen
@@ -105,7 +107,7 @@ def load_options():
 def print_config():
   print "CROPPING:", not not CROP_SCREEN
   print "FADE TIME:", TRANSITION_MS
-  print "SLEEP TIME:", SLEEP_TIME
+  print "SLEEP TIME:", SCREENSHOT_TIME
   print "DISPLAY RANGE:", MIN_LEVEL, MAX_LEVEL
   print "LEARNING MODE:", LEARN_MODE
   print "BRIGHTNESS RANGE:", MIN_BRIGHT, MAX_BRIGHT
@@ -165,7 +167,7 @@ def load_luma_map(luma_file=LUMA_FILE):
     print "WARNING: NOT LOADING LUMA MAP", e
 
 LAST_SAVE = None
-SAVE_INTERVAL=10000
+SAVE_INTERVAL=1000
 def save_luma_map(force=False):
   now = int(time.time())
   global LAST_SAVE
@@ -247,40 +249,91 @@ def fmt_hour(minutes):
 
   return "%02i:%02i" % (hour, mnt)
 
+
+PREV_LEVELS={}
+PREV_WINDOWS = []
+MAX_WINDOWS=100
+
+def add_prev_level(window, new_level):
+  global PREV_LEVELS
+  PREV_LEVELS = {}
+  PREV_WINDOWS.append((window, new_level))
+  while len(PREV_WINDOWS) > MAX_WINDOWS:
+    PREV_WINDOWS.pop(0)
+
+  for datum in PREV_WINDOWS:
+    win, level = datum
+    PREV_LEVELS[win] = level
+
+def get_window():
+  focused_cmd = CHECK_TITLE_CMD
+  if CHECK_PID:
+    focused_cmd = CHECK_PID_CMD
+
+  try: window = run_cmd(focused_cmd).strip()
+  except: window = None
+
+  return window
+
 def monitor_luma():
   prev_brightness = None
   prev_window = None
   prev_mean = None
+  faded = None
 
   cur_range = MAX_BRIGHT - MIN_BRIGHT
   suppressed_time = 0
 
   last_calibrate = int(time.time())
+  last_screenshot = int(time.time())
+  last_observation = 0
 
 
   while True:
     time.sleep(SLEEP_TIME / 1000.0)
 
-    focused_cmd = CHECK_TITLE_CMD
-    if CHECK_PID:
-      focused_cmd = CHECK_PID_CMD
+    window = get_window()
 
-    try: window = run_cmd(focused_cmd)
-    except: window = None
+    now = time.time()
+    if prev_window != window:
+      if not faded:
+        if window in PREV_LEVELS:
+          pred = PREV_LEVELS[window]
+          fade = TRANSITION_MS / 2
+          if VERBOSE:
+            curtime = int(time.time())
+            print "PRIOR|TS:%s," % curtime, "RECALLED BRIGHTNESS:", "%s/%s" % (int(new_level), MAX_LEVEL), "FOR", window[:15]
+
+          run_cmd("xbacklight -set %s -time %s" % (pred, fade))
+          faded = True
+
+    if now - last_screenshot < SCREENSHOT_TIME / 1000.0:
+      continue
+
+    last_screenshot = now
+    faded = False
+
+
 
     if prev_window == window:
-      suppressed_time += SLEEP_TIME / 1000
+      suppressed_time += SCREENSHOT_TIME / 1000
 
       if LEARN_MODE:
         now = int(time.time())
         hour = get_hour()
 
         cur_bright = get_brightness()
-        if abs(prev_brightness - cur_bright) > 1 and now - last_calibrate > next_calibrate:
+        pred_bright = get_mean_brightness(hour, cur_bright) or cur_bright
+        if abs(prev_brightness - pred_bright) > 1 and now - last_calibrate > next_calibrate:
           print "INPUT|TS:%s, LUMA:%05i, CUR:%.02f, EXP:%s" % (now, prev_mean, cur_bright, prev_brightness)
 
+          calib_factor = 1.5
+          next_calibrate = max(min(calib_factor*next_calibrate, 60 * 60 * 1000), 1)
+          if abs(last_observation - cur_bright) > 4:
+            next_calibrate = 1
+
+          last_observation = cur_bright
           # now we map the luma -> current brightness based on time of day
-          next_calibrate = min(2*next_calibrate, 60 * 60 * 1000)
           last_calibrate = now
 
           add_luma_brightness(hour, prev_mean, cur_bright)
@@ -307,8 +360,7 @@ def monitor_luma():
     suppressed_time = 0
     next_calibrate = 4
 
-    try: window = run_cmd(focused_cmd)
-    except: window = None
+    window = get_window()
     prev_window = window
 
     brightness = run_cmd(SCREENSHOT_CMD + " " + BRIGHTNESS_CMD)
@@ -341,7 +393,9 @@ def monitor_luma():
     if prev_brightness != new_level:
       now = int(time.time())
       print "MODEL|TS:%s," % now, "LUMA:%05i," % trimmed_mean, "NEW GAMMA:%.02f," % new_gamma, "NEW BRIGHTNESS:", "%s/%s" % (int(new_level), MAX_LEVEL)
-      run_cmd("xbacklight -set %s -time %s" % (new_level, TRANSITION_MS))
+      run_cmd("xbacklight -set %s -time %s" % (new_level, TRANSITION_MS / 2))
+
+      add_prev_level(window, new_level)
     prev_brightness = new_level
 
 def run():
