@@ -279,7 +279,7 @@ def add_prev_level(window, new_level):
 
   for datum in PREV_WINDOWS:
     win, level = datum
-    PREV_LEVELS[win] = level
+    PREV_LEVELS[win] = max(level, 1)
 
 def get_window():
   focused_cmd = CHECK_TITLE_CMD

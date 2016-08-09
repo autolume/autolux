@@ -33,7 +33,7 @@ usage
     # requires matplotlib
     autolux --vis
 
-.. image:: https://cloud.githubusercontent.com/assets/98617/17502147/6c0062f6-5d9a-11e6-8ed6-2ed39d2884e7.png
+.. image:: https://cloud.githubusercontent.com/assets/98617/17515134/813b76f0-5deb-11e6-9f27-cb91d3442c45.png
    :width: 800
 
 

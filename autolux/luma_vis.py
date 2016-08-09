@@ -19,7 +19,7 @@ def build_all_scatterplot(lumas):
     sz = []
     dict_all_lumas = {}
 
-    cm = plt.cm.get_cmap('gist_rainbow')
+    cm = plt.cm.get_cmap('gnuplot2')
 
     for time in lumas:
         for luma in lumas[time]:
