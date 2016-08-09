@@ -6,10 +6,6 @@ import random
 
 import autolux
 
-# UTC offset
-import time
-UTC_OFFSET = int(-time.timezone / 60 / 60)
-
 def visualize(luma_file):
     if not autolux.LUMA_MAP or len(autolux.LUMA_MAP) == 0:
         autolux.load_luma_map(luma_file)
@@ -36,7 +32,7 @@ def build_all_scatterplot(lumas):
 
     for luma in reversed(sorted(dict_all_lumas)):
         for brightness,time,obs in dict_all_lumas[luma]:
-            time_hour = (((time / 60) + UTC_OFFSET) % 24)
+            time_hour = (((time / 60)) % 24)
             time_jitter = time_hour + (time % 60) / 60.0
             luma_jitter = luma + random.randint(-500, 500)
             bright_jitter = brightness + random.randint(-2, 2)
@@ -47,9 +43,16 @@ def build_all_scatterplot(lumas):
             colors.append(luma_jitter)
 
 
+    max_y = max(y or [10])
+    now_mark = autolux.get_hour()
+    plt.text((now_mark / 60) % 24, 1, "NOW")
+    plt.text((now_mark / 60) % 24, max_y-1, "NOW")
     sc = plt.scatter(x, y, s=sz, c=colors, alpha=0.1, cmap=cm, edgecolor='none',marker="s")
-    plt.colorbar(sc)
-    plt.axis([0, 24, 0, max(y)])
+
+    cbar = plt.colorbar(sc, ticks=[0000, autolux.MAX_BRIGHT])
+    cbar.ax.set_yticklabels(['Bright Screen Content', 'Dark Screen Content'])
+    cbar.ax.invert_yaxis()
+    plt.axis([0, 24, 0, max_y])
     plt.show()
 
 if __name__ == '__main__':
