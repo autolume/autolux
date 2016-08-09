@@ -318,7 +318,7 @@ def monitor_luma():
           fade = TRANSITION_MS / 2
           if VERBOSE:
             curtime = int(time.time())
-            print "PRIOR|TS:%s," % curtime, "RECALLED BRIGHTNESS:", "%s/%s" % (int(new_level), MAX_LEVEL), "FOR", window[:15]
+            print "PRIOR|TS:%s," % curtime, "RECALLED BRIGHTNESS:", "%s/%s" % (int(pred), MAX_LEVEL), "FOR", window[:15]
 
           run_cmd("xbacklight -set %s -time %s" % (pred, fade))
           faded = True
@@ -342,6 +342,7 @@ def monitor_luma():
         pred_bright = get_mean_brightness(hour, cur_bright) or cur_bright
         if abs(prev_brightness - pred_bright) > 1 and now - last_calibrate > next_calibrate:
           print "INPUT|TS:%s, LUMA:%05i, CUR:%.02f, EXP:%s" % (now, prev_mean, cur_bright, prev_brightness)
+          add_prev_level(window, cur_bright)
 
           calib_factor = 1.5
           next_calibrate = max(min(calib_factor*next_calibrate, 60 * 60 * 1000), 1)
