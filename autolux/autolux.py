@@ -6,6 +6,10 @@ import os
 import shlex, subprocess
 import math
 
+try: import cpickle as pickle
+except: import pickle
+
+
 
 # BRIGHTNESS LEVELS (should be between 1 and 100)
 MIN_LEVEL=5
@@ -26,10 +30,21 @@ LUMA_SPREAD=5000
 # for a luma map, what we hold is:
 # time of day -> luma -> [p1,p2,p3]
 LUMA_MAP = {}
+LUMA_OBS = []
 
-import os
+LUMA_DIR=os.path.expanduser("~/.config/autolux")
+LUMA_FILE_DEFAULT = os.path.join(LUMA_DIR, "luma_map.p")
+OLD_LUMA_FILE_DEFAULT = os.path.expanduser("~/.config/autolux.luma_map")
+
+
 LUMA_FILE=None
-LUMA_FILE_DEFAULT = os.path.expanduser("~/.config/autolux.luma_map")
+CHANGES_FILE = os.path.join(LUMA_DIR, "brightness_changes.p")
+
+try: os.makedirs(LUMA_DIR)
+except: pass
+
+if os.path.exists(OLD_LUMA_FILE_DEFAULT):
+  os.rename(OLD_LUMA_FILE_DEFAULT, LUMA_FILE_DEFAULT)
 
 
 # EXAMPLE: 100x200+300+400
@@ -150,16 +165,13 @@ def get_brightness():
 
 
 
-try: import cpickle as pickle
-except: import pickle
-
 def print_luma_completion():
   l = len(LUMA_MAP)
   num_minute_buckets = (24.0*(60/HOUR_SLICE))
   time_perc_str = "%i" % round(l / num_minute_buckets * 100)
 
   num_luma_buckets = int((MAX_BRIGHT - MIN_BRIGHT) / LUMA_BUCKET)
-  expected_obs = len(LUMA_MAP) * num_luma_buckets
+  expected_obs = num_minute_buckets * num_luma_buckets
   total_obs = 0.0
   for luma in LUMA_MAP:
     total_obs += len(LUMA_MAP[luma])
@@ -171,6 +183,17 @@ def print_luma_completion():
 
 def get_luma_file():
   return LUMA_FILE
+
+def load_luma_observations():
+  global LUMA_OBS
+  if os.path.exists(CHANGES_FILE):
+    try:
+      with open(CHANGES_FILE) as f:
+        LUMA_OBS = pickle.load(f)
+        print "LOADED %s LUMA OBSERVATIONS" % len(LUMA_OBS)
+    except Exception, e:
+      print "EXCEPT", e
+
 
 def load_luma_map(luma_file=LUMA_FILE):
   print "LOADING LUMA MAP", luma_file
@@ -191,7 +214,13 @@ def save_luma_map(force=False):
     try:
       with open(LUMA_FILE, "wb") as f:
         pickle.dump(LUMA_MAP, f)
-        last_save = now
+        LAST_SAVE = now
+    except Exception, e:
+      print "WARNING: NOT SAVING LUMA MAP", e
+
+    try:
+      with open(CHANGES_FILE, "wb") as f:
+        pickle.dump(LUMA_OBS, f)
     except Exception, e:
       print "WARNING: NOT SAVING LUMA MAP", e
 
@@ -221,12 +250,21 @@ def get_mean_brightness(hour, luma):
 
   return get_predicted_brightness(vals)
 
+def record_luma_change(hour, luma, cur_bright):
+  LUMA_OBS.append((hour, luma, cur_bright))
+
+
+
+
+
 MAX_LUMA_PTS=7
 def add_luma_brightness(hour, luma, cur_bright, backfill=None):
   if luma < 0:
     return
 
   hour = int(hour)
+  if backfill:
+    backfill = int(backfill)
 
   prev_bright_pred = get_mean_brightness(hour, luma)
   if not hour in LUMA_MAP:
@@ -323,6 +361,8 @@ def monitor_luma():
           run_cmd("xbacklight -set %s -time %s" % (pred, fade))
           faded = True
 
+          continue
+
     if now - last_screenshot < SCREENSHOT_TIME / 1000.0:
       continue
 
@@ -354,12 +394,14 @@ def monitor_luma():
           last_calibrate = now
 
           add_luma_brightness(hour, prev_mean, cur_bright)
+          record_luma_change(hour, prev_mean, cur_bright)
+
           for i, h in enumerate(xrange(HOUR_SLICE, HOUR_SPREAD*3, HOUR_SLICE)):
             low_hour = (hour-h) % (24*60)
             high_hour = (hour+h) % (24*60)
             hour_dist = i+1
-            add_luma_brightness(low_hour, prev_mean, cur_bright, backfill=hour_dist)
-            add_luma_brightness(high_hour, prev_mean, cur_bright, backfill=hour_dist)
+            add_luma_brightness(low_hour, prev_mean, cur_bright, backfill=math.sqrt(hour_dist))
+            add_luma_brightness(high_hour, prev_mean, cur_bright, backfill=math.sqrt(hour_dist))
             for j, b in enumerate(xrange(LUMA_BUCKET, LUMA_SPREAD+LUMA_BUCKET, LUMA_BUCKET)):
               luma_dist = j+1
               total_dist = int(math.sqrt(hour_dist + luma_dist))
@@ -424,6 +466,7 @@ def run():
     luma_vis.visualize(LUMA_FILE)
   else:
     print_config()
+    load_luma_observations()
     load_luma_map(LUMA_FILE)
     monitor_luma()
 
