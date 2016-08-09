@@ -47,10 +47,13 @@ def build_all_scatterplot(lumas):
     now_mark = autolux.get_hour()
     plt.text((now_mark / 60) % 24, 1, "NOW")
     plt.text((now_mark / 60) % 24, max_y-1, "NOW")
+    plt.yticks([0, max_y], ['Low Brightness\n(predicted by model)', 'High Brightness\n(predicted by model)'])
+    plt.xticks([0,3,6,9,12,15,18,21,24])
     sc = plt.scatter(x, y, s=sz, c=colors, alpha=0.1, cmap=cm, edgecolor='none',marker="s")
 
     cbar = plt.colorbar(sc, ticks=[0000, autolux.MAX_BRIGHT])
-    cbar.ax.set_yticklabels(['Bright Screen Content', 'Dark Screen Content'])
+    cbar.ax.set_yticklabels(['Low Luminence \n(Dark Screen Content)',
+        'High Luminence \n(Bright Screen Content)'])
     cbar.ax.invert_yaxis()
     plt.axis([0, 24, 0, max_y])
     plt.show()
