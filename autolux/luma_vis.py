@@ -5,12 +5,14 @@ import os
 import random
 
 import autolux
+import models
+import opts
 
 def visualize(luma_file):
-    if not autolux.LUMA_MAP or len(autolux.LUMA_MAP) == 0:
-        autolux.load_luma_map(luma_file)
+    if not models.LUMA_MAP or len(models.LUMA_MAP) == 0:
+        models.load_luma_map(luma_file)
 
-    build_all_scatterplot(autolux.LUMA_MAP)
+    build_all_scatterplot(models.LUMA_MAP)
 
 def build_all_scatterplot(lumas):
     colors = []
@@ -24,7 +26,7 @@ def build_all_scatterplot(lumas):
     for time in lumas:
         for luma in lumas[time]:
             obs = lumas[time][luma]
-            pred = autolux.get_predicted_brightness(obs)
+            pred = models.get_predicted_brightness(obs)
             if not luma in dict_all_lumas:
                 dict_all_lumas[luma] = []
 
@@ -51,7 +53,7 @@ def build_all_scatterplot(lumas):
     plt.xticks([0,3,6,9,12,15,18,21,24])
     sc = plt.scatter(x, y, s=sz, c=colors, alpha=0.1, cmap=cm, edgecolor='none',marker="s")
 
-    cbar = plt.colorbar(sc, ticks=[0000, autolux.MAX_BRIGHT])
+    cbar = plt.colorbar(sc, ticks=[0000, opts.MAX_BRIGHT])
     cbar.ax.set_yticklabels(['Low Luminence \n(Dark Screen Content)',
         'High Luminence \n(Bright Screen Content)'])
     cbar.ax.invert_yaxis()
