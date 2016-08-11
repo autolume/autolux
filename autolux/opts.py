@@ -36,11 +36,15 @@ CHECK_TITLE_CMD='xdotool getwindowfocus getwindowname'
 LEARN_MODE=True
 VIZ_LUMA_MAP=False
 
+PLOT_LUMA=True
+PLOT_BRIGHT=False
+
 VERBOSE=False
 def load_options():
   global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, CROP_SCREEN
   global SLEEP_TIME, TRANSITION_MS, RECALIBRATE_MS, SCREENSHOT_TIME
   global VERBOSE, CHECK_PID, LEARN_MODE,VIZ_LUMA_MAP
+  global PLOT_LUMA, PLOT_BRIGHT
 
   from optparse import OptionParser
   parser = OptionParser()
@@ -63,10 +67,12 @@ def load_options():
     help="area to inspect, use imagemagick geometry style string (f.e. 50%x20%+400+100 means 50% width, 20% height at offset 400x and 100y)")
   parser.add_option("--pid", dest="check_pid", action="store_true", help="check screen brightness when PID changes")
   parser.add_option("--title", dest="check_pid", action="store_false", help="check screen brightness when window changes")
-  parser.add_option("--visualize", dest="visualize", action="store_true", help="visualize your brightness model", default=VIZ_LUMA_MAP)
   parser.add_option("--horizontal", dest="horizontal", action="store_true", help="take a horizontal screenshot instead of vertical")
   parser.add_option("--no-learn", dest="learn", action="store_false", help="disable learning", default=LEARN_MODE)
   parser.add_option("--verbose", dest="verbose", action="store_true", help="turn on verbose output, including screenshot timing info")
+  parser.add_option("--visualize", dest="visualize", action="store_true", help="visualize your brightness model", default=VIZ_LUMA_MAP)
+  parser.add_option("--plot-luma", dest="plot_luma", action="store_true", help="plot screen luminence on y axis and predicted brightness as color, good for observing prefered brightness by time of day", default=PLOT_LUMA)
+  parser.add_option("--plot-brightness", dest="plot_luma", action="store_false", help="plot predicted brightness on y axis and input luminence as color, good for observing eye strain", default=not PLOT_LUMA)
 
 
   options, args = parser.parse_args()
@@ -82,6 +88,8 @@ def load_options():
   LEARN_MODE=options.learn
   VIZ_LUMA_MAP=options.visualize
   models.LUMA_FILE=options.luma_file
+  PLOT_BRIGHT=not options.plot_luma
+  PLOT_LUMA=options.plot_luma
 
   if options.horizontal:
     CROP_SCREEN = HORIZ_CROP_SCREEN
