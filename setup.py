@@ -5,7 +5,7 @@ try: desc=open('README.rst').read()
 except: pass
 setup(
     name='autolux',
-    version='0.0.28',
+    version='0.0.29',
     author='okay',
     author_email='okay.zed+al@gmail.com',
     packages=['autolux' ],

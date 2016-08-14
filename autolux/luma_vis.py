@@ -52,8 +52,15 @@ def build_all_scatterplot(lumas):
                 colors.append(bright_jitter)
 
 
-    min_y = min(y or [0])
-    max_y = max(y or [10])
+    import copy
+    y_copy = copy.copy(y)
+    y_copy.sort()
+
+    min_y = 0
+    max_y = 10
+    if len(y_copy):
+        max_y = y_copy[int(len(y_copy) * 0.95)]
+
     now_mark = autolux.get_hour()
     plt.text((now_mark / 60) % 24, 1, "NOW")
     plt.text((now_mark / 60) % 24, max_y-1, "NOW")

@@ -119,10 +119,8 @@ def get_mean_brightness(hour, luma):
 
 def record_luma_change(hour, luma, cur_bright):
   LUMA_OBS.append((hour, luma, cur_bright))
-
-
-
-
+  while len(LUMA_OBS) > 1000:
+    LUMA_OBS.pop(0)
 
 MAX_LUMA_PTS=7
 def add_luma_brightness(hour, luma, cur_bright, backfill=None):
