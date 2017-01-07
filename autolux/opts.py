@@ -39,16 +39,23 @@ VIZ_LUMA_MAP=False
 PLOT_LUMA=True
 PLOT_BRIGHT=False
 
+RUN_AS_DAEMON=False
+
 VERBOSE=False
 def load_options():
   global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, CROP_SCREEN
   global SLEEP_TIME, TRANSITION_MS, RECALIBRATE_MS, SCREENSHOT_TIME
   global VERBOSE, CHECK_PID, LEARN_MODE,VIZ_LUMA_MAP
   global PLOT_LUMA, PLOT_BRIGHT
+  global RUN_AS_DAEMON
 
   from optparse import OptionParser
   parser = OptionParser()
+  parser.add_option("--daemon", dest="run_as_daemon", help="run autolux as a daemon",
+    default=RUN_AS_DAEMON, action="store_true")
   parser.add_option("--file", dest="luma_file", help="luma file to load", default=models.LUMA_FILE_DEFAULT)
+  parser.add_option("--sleep-interval", dest="sleep_interval", type="int", default=SLEEP_TIME,
+    help="check for window change ever SLEEP_INTERVAL ms, default is %s" % SLEEP_TIME)
   parser.add_option("--interval", dest="interval", type="int", default=SCREENSHOT_TIME,
     help="take screen snapshot every INTERVAL ms and readjust the screen brightness, default is %s" % SCREENSHOT_TIME)
   parser.add_option("--min", "--min-level", dest="min_level", type="int", default=MIN_LEVEL,
@@ -78,7 +85,9 @@ def load_options():
   options, args = parser.parse_args()
   MIN_LEVEL = options.min_level
   MAX_LEVEL = options.max_level
+  RUN_AS_DAEMON = options.run_as_daemon
   SCREENSHOT_TIME = options.interval
+  SLEEP_TIME = options.sleep_interval
   MAX_LEVEL = options.max_level
   TRANSITION_MS = options.fade_time
   CROP_SCREEN = options.crop_screen
@@ -102,6 +111,7 @@ def load_options():
 
 
 def print_config():
+  print "DAEMON MODE:", not not RUN_AS_DAEMON
   print "CROPPING:", not not CROP_SCREEN
   print "FADE TIME:", TRANSITION_MS
   print "SLEEP TIME:", SCREENSHOT_TIME

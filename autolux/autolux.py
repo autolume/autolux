@@ -177,7 +177,25 @@ def run():
     opts.print_config()
     models.load_luma_observations()
     models.load_luma_map(models.LUMA_FILE)
-    monitor_luma()
+
+    if opts.RUN_AS_DAEMON:
+        import os
+        try:
+            import daemon
+            import daemon.pidfile
+        except:
+            print "MISSING DAEMON MODULE. PLEASE INSTALL PYTHON-DAEMON TO ENABLE DAEMON MODE"
+            import sys
+            sys.exit(1)
+
+        uid = os.getuid()
+        lock_file = os.path.join(os.path.sep, "tmp", "autolux.%s.pid" % uid)
+        print "RUNNING IN DAEMON MODE"
+        print "LOCKFILE", lock_file
+        with daemon.DaemonContext(pidfile=daemon.pidfile.PIDLockFile(lock_file)):
+            monitor_luma()
+    else:
+        monitor_luma()
 
 if __name__ == "__main__":
   run()
