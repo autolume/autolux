@@ -17,7 +17,7 @@ dependencies
 ------------
 
 * python2 (not python3)
-* python-daemon (autolux running with a service)
+* python-daemon (autolux running as a service)
 * imagemagick (for screenshots + determining average brightness)
 * xdotool (finding focused window)
 * xbacklight (for setting display brightness)
@@ -35,7 +35,7 @@ or
 
 ::
 
-    # running autolux with a service
+    # running autolux as a service
     autolux --daemon
 
 
