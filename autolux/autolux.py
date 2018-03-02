@@ -3,7 +3,6 @@
 
 import time
 import os
-import shlex, subprocess
 import math
 
 try: import cpickle as pickle
@@ -12,31 +11,23 @@ except: import pickle
 import opts
 import models
 
-def run_cmd(cmd, bg=False):
-  args = shlex.split(cmd)
-  start = int(round(time.time() * 1000))
-  ret = ""
-  if not bg:
-    ret = subprocess.check_output(args)
+from run_cmd import run_cmd
+def set_brightness(new_level, time):
+  if opts.XRANDR_OUTPUT:
+    import xrandr
+    xrandr.set_brightness(new_level, time)
   else:
-    subprocess.Popen(args)
-
-  end = int(round(time.time() * 1000))
-  if opts.VERBOSE and end - start > 50:
-    print "TIME:", end - start, "CMD", cmd.split()[0]
-  return ret
-
+    import xbacklight
+    xbacklight.set_brightness(new_level, time)
 
 def get_brightness():
-  import xbacklight
-  if not xbacklight.can_use():
-    ret = float(run_cmd("xbacklight -get"))
-    return ret
+  if opts.XRANDR_OUTPUT:
+    import xrandr
+    return xrandr.get_brightness()
+
   else:
-    ctrls = xbacklight.get_controllers()
-    ctrl = xbacklight.Controller(ctrls[0])
-    ret = float(ctrl.brightness())
-    return ret
+    import xbacklight
+    return xbacklight.get_brightness()
 
 def get_hour():
   hour = int(time.strftime("%H")) * 60
@@ -103,7 +94,7 @@ def monitor_luma():
             curtime = int(time.time())
             print "PRIOR|TS:%s," % curtime, "RECALLED BRIGHTNESS:", "%s/%s" % (int(pred), MAX_LEVEL), "FOR", window[:15]
 
-          run_cmd("xbacklight -set %s -time %s" % (pred, fade))
+          set_brightness(pred, fade)
           faded = True
 
           continue
@@ -162,7 +153,8 @@ def monitor_luma():
     if prev_brightness != new_level:
       now = int(time.time())
       print "MODEL|TS:%s," % now, "LUMA:%05i," % trimmed_mean, "NEW GAMMA:%.02f," % new_gamma, "NEW BRIGHTNESS:", "%s/%s" % (int(new_level), opts.MAX_LEVEL)
-      run_cmd("xbacklight -set %s -time %s" % (new_level, opts.TRANSITION_MS / 2))
+
+      set_brightness(new_level, opts.TRANSITION_MS / 2)
 
       add_prev_level(window, new_level)
     prev_brightness = new_level
@@ -170,7 +162,13 @@ def monitor_luma():
 def run():
   opts.load_options()
 
-  if opts.VIZ_LUMA_MAP:
+  if opts.RESET:
+    set_brightness(100, 1)
+  elif opts.ADJUSTMENT:
+    b = get_brightness()
+    nb = b + opts.ADJUSTMENT
+    set_brightness(nb, 0)
+  elif opts.VIZ_LUMA_MAP:
     import luma_vis
     luma_vis.visualize(models.LUMA_FILE)
   else:
@@ -198,4 +196,10 @@ def run():
         monitor_luma()
 
 if __name__ == "__main__":
-  run()
+  try:
+    run()
+  except:
+    # we always reset brightness back to 100% for xrandr
+    # if there was an error
+    if opts.XRANDR_OUTPUT:
+      set_brightness(100, 1)

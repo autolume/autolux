@@ -5,7 +5,7 @@ import models
 
 # BRIGHTNESS LEVELS (should be between 1 and 100)
 MIN_LEVEL=5
-MAX_LEVEL=20
+MAX_LEVEL=100
 
 # interpolate over our threshold (should be between 1 and 65K)
 MAX_BRIGHT=50000
@@ -41,13 +41,19 @@ PLOT_BRIGHT=False
 
 RUN_AS_DAEMON=False
 
+# do we use software dimming or not
+XRANDR_OUTPUT = None
+ADJUSTMENT = None
+RESET = False
+
 VERBOSE=False
 def load_options():
   global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, CROP_SCREEN
   global SLEEP_TIME, TRANSITION_MS, RECALIBRATE_MS, SCREENSHOT_TIME
   global VERBOSE, CHECK_PID, LEARN_MODE,VIZ_LUMA_MAP
   global PLOT_LUMA, PLOT_BRIGHT
-  global RUN_AS_DAEMON
+  global RUN_AS_DAEMON, XRANDR_OUTPUT
+  global ADJUSTMENT, RESET
 
   from optparse import OptionParser
   parser = OptionParser()
@@ -81,6 +87,12 @@ def load_options():
   parser.add_option("--plot-luma", dest="plot_luma", action="store_true", help="plot screen luminence on y axis and predicted brightness as color, good for observing prefered brightness by time of day", default=PLOT_LUMA)
   parser.add_option("--plot-brightness", dest="plot_luma", action="store_false", help="plot predicted brightness on y axis and input luminence as color, good for observing eye strain", default=not PLOT_LUMA)
 
+  parser.add_option("--xrandr", dest="xrandr_output", type="str", default=None)
+
+  parser.add_option("--adjust", dest="adjustment", type="float", default=None)
+  parser.add_option("--reset", dest="reset", action="store_true", default=None)
+
+
 
   options, args = parser.parse_args()
   MIN_LEVEL = options.min_level
@@ -99,6 +111,10 @@ def load_options():
   models.LUMA_FILE=options.luma_file
   PLOT_BRIGHT=not options.plot_luma
   PLOT_LUMA=options.plot_luma
+  XRANDR_OUTPUT=options.xrandr_output
+  ADJUSTMENT=options.adjustment
+  RESET=options.reset
+
 
   if options.horizontal:
     CROP_SCREEN = HORIZ_CROP_SCREEN

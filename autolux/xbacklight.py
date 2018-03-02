@@ -38,3 +38,20 @@ class Controller(object):
 
     def brightness(self):
         return self.raw_brightness() * 100 // self._max_brightness
+
+#################################
+from run_cmd import run_cmd
+
+def set_brightness(new_level, time):
+    run_cmd("xbacklight -set %s -time %s" % (new_level, time))
+
+
+def get_brightness():
+    if not can_use():
+      ret = float(run_cmd("xbacklight -get"))
+      return ret
+    else:
+      ctrls = get_controllers()
+      ctrl = Controller(ctrls[0])
+      ret = float(ctrl.brightness())
+      return ret

@@ -17,7 +17,7 @@ dependencies
 ------------
 
 * python2 (not python3)
-* python-daemon (autolux running as a service)
+* python-daemon (optional, for running as a service)
 * imagemagick (for screenshots + determining average brightness)
 * xdotool (finding focused window)
 * xbacklight (for setting display brightness)
@@ -30,13 +30,31 @@ usage
 
     # runs autolux
     autolux
-    
+
 or
 
 ::
 
     # running autolux as a service
     autolux --daemon
+
+
+xrandr
+------
+
+if your display does not support hardware adjustment through xbacklight,
+its possible to use xrandr to adjust the brightness via software.
+
+
+::
+
+    # find out the display of your name using xrandr
+    xrandr --listmonitors
+
+    autolux --xrandr eDP1 # my monitor is named eDP1
+    autolux --xrandr eDP1 --reset # reset brightness to normal
+    autolux --xrandr eDP1 --adjust -1 # lower brightness by 1
+    autolux --xrandr eDP1 --adjust +1 # increase brightness by 1
 
 
 model
