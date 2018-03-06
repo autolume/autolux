@@ -8,7 +8,7 @@ MIN_LEVEL=5
 MAX_LEVEL=100
 
 # interpolate over our threshold (should be between 1 and 65K)
-MAX_BRIGHT=50000
+MAX_BRIGHT=60000
 MIN_BRIGHT=5000
 
 # interval between screenshots
@@ -114,6 +114,9 @@ def load_options():
   XRANDR_OUTPUT=options.xrandr_output
   ADJUSTMENT=options.adjustment
   RESET=options.reset
+
+  MIN_BRIGHT = options.min_bright
+  MAX_BRIGHT = options.max_bright
 
 
   if options.horizontal:
