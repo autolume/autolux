@@ -22,7 +22,7 @@ RECALIBRATE_MS=60 * 1000
 CROP_SCREEN="10x100%+400+0"
 HORIZ_CROP_SCREEN="90%x10+200+400"
 
-SCREENSHOT_CMD='import -colorspace gray -screen -w root -quality 20'
+SCREENSHOT_CMD='import -silent -colorspace gray -screen -w root -quality 20'
 BRIGHTNESS_CMD='-format "%[mean]" info:'
 
 # change brightness when PID changes or
