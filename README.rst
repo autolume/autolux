@@ -83,7 +83,7 @@ visuals
     # show brightness prediction model
     # requires matplotlib
 
-.. image:: https://cloud.githubusercontent.com/assets/98617/17515134/813b76f0-5deb-11e6-9f27-cb91d3442c45.png
+.. image:: https://i.imgur.com/SjWZPbV.png
    :width: 800
 
 
@@ -97,6 +97,6 @@ visuals
     autolux --vis --plot-luma
     # --plot-luma will swap the luma and brightness on the Y axis and colorbar
 
-.. image:: https://cloud.githubusercontent.com/assets/98617/17578997/f570188c-5f44-11e6-9387-d5e9f08b7cd6.png
+.. image:: https://i.imgur.com/DQKZm8D.png
    :width: 800
 
