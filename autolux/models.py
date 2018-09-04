@@ -37,7 +37,7 @@ def print_luma_completion():
   num_minute_buckets = (24.0*(60/HOUR_SLICE))
   time_perc_str = "%i" % round(l / num_minute_buckets * 100)
 
-  num_luma_buckets = int((opts.MAX_BRIGHT - opts.MIN_BRIGHT) / LUMA_BUCKET)
+  num_luma_buckets = int((opts.MAX_WHITE - opts.MIN_WHITE) / LUMA_BUCKET)
   expected_obs = num_minute_buckets * num_luma_buckets
   total_obs = 0.0
   for luma in LUMA_MAP:

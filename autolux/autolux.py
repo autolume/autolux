@@ -73,7 +73,7 @@ def monitor_luma():
   prev_mean = None
   faded = None
 
-  cur_range = opts.MAX_BRIGHT - opts.MIN_BRIGHT
+  cur_range = opts.MAX_WHITE - opts.MIN_WHITE
   suppressed_time = 0
 
   last_screenshot = int(time.time())
@@ -133,7 +133,7 @@ def monitor_luma():
       continue
 
 
-    trimmed_mean = max(min(opts.MAX_BRIGHT, cur_mean), opts.MIN_BRIGHT) - opts.MIN_BRIGHT
+    trimmed_mean = max(min(opts.MAX_WHITE, cur_mean), opts.MIN_WHITE) - opts.MIN_WHITE
     trimmed_mean = int(trimmed_mean / models.LUMA_BUCKET) * models.LUMA_BUCKET
     range_is = float(trimmed_mean) / float(cur_range)
 

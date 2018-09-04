@@ -75,7 +75,7 @@ def build_all_scatterplot(lumas):
     plt.xticks([0,3,6,9,12,15,18,21,24])
     sc = plt.scatter(x, y, s=sz, c=colors, alpha=0.1, cmap=cm, edgecolor='none',marker="s")
 
-    cbar = plt.colorbar(sc, ticks=[0000, opts.MAX_BRIGHT])
+    cbar = plt.colorbar(sc, ticks=[0000, opts.MAX_WHITE])
 
     if opts.PLOT_BRIGHT:
         cbar.ax.set_yticklabels(['Low Luminence \n(Dark Screen Content)',

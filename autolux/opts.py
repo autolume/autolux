@@ -8,8 +8,8 @@ MIN_LEVEL=5
 MAX_LEVEL=100
 
 # interpolate over our threshold (should be between 1 and 65K)
-MAX_BRIGHT=60000
-MIN_BRIGHT=5000
+MAX_WHITE=60000
+MIN_WHITE=5000
 
 # interval between screenshots
 SLEEP_TIME=67
@@ -48,7 +48,7 @@ RESET = False
 
 VERBOSE=False
 def load_options():
-  global MIN_LEVEL, MAX_LEVEL, MAX_BRIGHT, MIN_BRIGHT, CROP_SCREEN
+  global MIN_LEVEL, MAX_LEVEL, MAX_WHITE, MIN_WHITE, CROP_SCREEN
   global SLEEP_TIME, TRANSITION_MS, RECALIBRATE_MS, SCREENSHOT_TIME
   global VERBOSE, CHECK_PID, LEARN_MODE,VIZ_LUMA_MAP
   global PLOT_LUMA, PLOT_BRIGHT
@@ -68,10 +68,10 @@ def load_options():
     help="min brightness level (from 1 to 100, default is %s)" % MIN_LEVEL)
   parser.add_option("--max", "--max-level", dest="max_level", type="int", default=MAX_LEVEL,
     help="max brightness level (from 1 to 100, default is %s)" % MAX_LEVEL)
-  parser.add_option("--lower", "--lower-threshold", dest="min_bright", type="int", default=MIN_BRIGHT,
-    help="upper brightness threshold before setting screen to lowest brightness (45K to 65K, default is %s)" % MIN_BRIGHT)
-  parser.add_option("--upper", "--upper-threshold", dest="max_bright", type="int", default=MAX_BRIGHT,
-  help="lower brightness threshold before setting screen to highest brightness (1K to 15K, default is %s)" % MIN_BRIGHT)
+  parser.add_option("--lower", "--lower-threshold", dest="min_white", type="int", default=MIN_WHITE,
+    help="lower whiteness threshold before setting screen to highest brightness (1K to 15K, default is %s)" % MIN_WHITE)
+  parser.add_option("--upper", "--upper-threshold", dest="max_white", type="int", default=MAX_WHITE,
+    help="upper whiteness threshold before setting screen to lowest brightness (45K to 65K, default is %s)" % MAX_WHITE)
   parser.add_option("--recalibrate-time", dest="recalibrate", type="int",
     default=RECALIBRATE_MS, help="ms before recalibrating even if the window hasn't changed. set to 0 to disable, default is 60K")
   parser.add_option("--fade-time", dest="fade_time", type="int", default=TRANSITION_MS,
@@ -115,8 +115,8 @@ def load_options():
   ADJUSTMENT=options.adjustment
   RESET=options.reset
 
-  MIN_BRIGHT = options.min_bright
-  MAX_BRIGHT = options.max_bright
+  MIN_WHITE = options.min_white
+  MAX_WHITE = options.max_white
 
 
   if options.horizontal:
@@ -136,7 +136,7 @@ def print_config():
   print "SLEEP TIME:", SCREENSHOT_TIME
   print "DISPLAY RANGE:", MIN_LEVEL, MAX_LEVEL
   print "LEARNING MODE:", LEARN_MODE
-  print "BRIGHTNESS RANGE:", MIN_BRIGHT, MAX_BRIGHT
+  print "BRIGHTNESS RANGE:", MIN_WHITE, MAX_WHITE
   print "RECALIBRATE EVERY:", RECALIBRATE_MS
   print "FOLLOW WINDOW PID:", not not CHECK_PID
   print "FOLLOW WINDOW TITLE:", not CHECK_PID
