@@ -46,6 +46,9 @@ XRANDR_OUTPUT = None
 ADJUSTMENT = None
 RESET = False
 
+# do we use `light` to adjust the brightness
+LIGHT_OUTPUT = None
+
 VERBOSE=False
 def load_options():
   global MIN_LEVEL, MAX_LEVEL, MAX_WHITE, MIN_WHITE, CROP_SCREEN
@@ -54,6 +57,7 @@ def load_options():
   global PLOT_LUMA, PLOT_BRIGHT
   global RUN_AS_DAEMON, XRANDR_OUTPUT
   global ADJUSTMENT, RESET
+  global LIGHT_OUTPUT
 
   from optparse import OptionParser
   parser = OptionParser()
@@ -87,10 +91,11 @@ def load_options():
   parser.add_option("--plot-luma", dest="plot_luma", action="store_true", help="plot screen luminence on y axis and predicted brightness as color, good for observing prefered brightness by time of day", default=PLOT_LUMA)
   parser.add_option("--plot-brightness", dest="plot_luma", action="store_false", help="plot predicted brightness on y axis and input luminence as color, good for observing eye strain", default=not PLOT_LUMA)
 
-  parser.add_option("--xrandr", dest="xrandr_output", type="str", default=None)
+  parser.add_option("--use-xrandr", dest="xrandr_output", action="store_true")
 
   parser.add_option("--adjust", dest="adjustment", type="float", default=None)
   parser.add_option("--reset", dest="reset", action="store_true", default=None)
+  parser.add_option("--use-light", dest="light_output", action="store_true")
 
 
 
@@ -114,6 +119,7 @@ def load_options():
   XRANDR_OUTPUT=options.xrandr_output
   ADJUSTMENT=options.adjustment
   RESET=options.reset
+  LIGHT_OUTPUT=options.light_output
 
   MIN_WHITE = options.min_white
   MAX_WHITE = options.max_white

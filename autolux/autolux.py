@@ -16,6 +16,9 @@ def set_brightness(new_level, time):
   if opts.XRANDR_OUTPUT:
     import xrandr
     xrandr.set_brightness(new_level, time)
+  elif opts.LIGHT_OUTPUT:
+    import light
+    light.set_brightness(new_level, time)
   else:
     import xbacklight
     xbacklight.set_brightness(new_level, time)
@@ -24,7 +27,9 @@ def get_brightness():
   if opts.XRANDR_OUTPUT:
     import xrandr
     return xrandr.get_brightness()
-
+  elif opts.LIGHT_OUTPUT:
+    import light
+    return light.get_brightness()
   else:
     import xbacklight
     return xbacklight.get_brightness()
