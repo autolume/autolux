@@ -91,7 +91,7 @@ def load_options():
   parser.add_option("--plot-luma", dest="plot_luma", action="store_true", help="plot screen luminence on y axis and predicted brightness as color, good for observing prefered brightness by time of day", default=PLOT_LUMA)
   parser.add_option("--plot-brightness", dest="plot_luma", action="store_false", help="plot predicted brightness on y axis and input luminence as color, good for observing eye strain", default=not PLOT_LUMA)
 
-  parser.add_option("--use-xrandr", dest="xrandr_output", action="store_true")
+  parser.add_option("--xrandr", dest="xrandr_output", type="str", default=None)
 
   parser.add_option("--adjust", dest="adjustment", type="float", default=None)
   parser.add_option("--reset", dest="reset", action="store_true", default=None)
